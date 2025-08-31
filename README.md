@@ -26,7 +26,7 @@ BoxRFID is a Windows desktop app (Electron) to read and write NFC/RFID tags used
 - Write tag Information - ABS and Dark Blue selected - Write successfully
 ![Write Tag Information](screenshots/Write%20Tag%20Information%20v1.0.0.png)
 
-- Setup - Language
+- Setup Language
 ![Setup - Language](screenshots/Setup%20-%20Language%20v1.0.0.png)
 
 - Setup Materials
