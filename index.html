@@ -1,0 +1,2084 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BoxRFID – Filament Tag Manager</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body { height: 100%; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #ffffff; /* Full white background */
+            height: 100%;
+        }
+
+        .container {
+            background: white;
+            border-radius: 0;      /* No rounded corners */
+            box-shadow: none;      /* No shadow */
+            padding: 22px;
+            width: 100%;
+            height: 100%;          /* Fill the window */
+            max-width: none;       /* No max width */
+            position: relative;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        h1 { color: #333; font-size: 20px; line-height: 1.2; }
+
+        .controls { display: flex; gap: 8px; }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 50%;
+            background: #f8f9fa;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            font-size: 16px;
+        }
+        .icon-btn:hover { background: #e9ecef; transform: scale(1.07); }
+
+        .section { margin-bottom: 18px; }
+        .section-title { font-size: 14px; font-weight: 600; color: #555; margin-bottom: 8px; }
+
+        .material-select, .setup-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            background: white;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+        .material-select:focus, .setup-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 6px;
+            max-width: 320px;
+            margin: 0 auto;
+        }
+        .color-item {
+            width: 34px;
+            height: 34px;
+            border-radius: 7px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            position: relative;
+        }
+        .color-item:hover { transform: scale(1.06); box-shadow: 0 3px 10px rgba(0,0,0,0.18); }
+        .color-item.selected { border-color: #333; transform: scale(1.1); box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
+
+        .color-preview {
+            margin: 12px auto;
+            width: 100%;
+            height: 44px;
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .btn-write { background: linear-gradient(45deg, #4CAF50, #45a049); color: white; }
+        .btn-write:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(76, 175, 80, 0.25); }
+
+        .btn-read { background: linear-gradient(45deg, #2196F3, #1976D2); color: white; }
+        .btn-read:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(33, 150, 243, 0.25); }
+
+        .btn-option {
+            display: block;
+            margin: 6px auto 0;
+            width: fit-content;
+            text-align: center;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: none;
+            letter-spacing: 0.2px;
+            background: #6c757d;
+            color: #fff;
+        }
+        #tooltip {
+            position: fixed;
+            z-index: 5000;
+            padding: 6px 8px;
+            background: rgba(33,33,33,0.92);
+            color: #fff;
+            font-size: 12px;
+            border-radius: 6px;
+            pointer-events: none;
+            display: none;
+            white-space: nowrap;
+        }
+        .btn-option.active { background: #28a745; }
+        .btn-option .dot { font-size: 12px; line-height: 1; }
+
+        .btn-setup {
+            background: linear-gradient(45deg, #FF9800, #F57C00);
+            color: white;
+            font-size: 12px;
+            padding: 8px 16px;
+            width: auto;
+        }
+        .btn-setup:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(255, 152, 0, 0.25); }
+
+        .status {
+            margin-top: 14px;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+            display: none;
+            font-size: 13px;
+        }
+        .status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status.info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+
+        .connection-status {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #dc3545;
+            transition: all 0.3s ease;
+        }
+        .connection-status.connected { background: #28a745; }
+
+        .loading { display: none; text-align: center; margin: 16px 0; }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 26px;
+            height: 26px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .popup-modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.2s ease-out;
+        }
+        .popup-content {
+            background-color: white;
+            margin: 12% auto;
+            padding: 22px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 480px;
+            animation: slideInModal 0.2s ease-out;
+            text-align: center;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            animation: fadeIn 0.2s ease-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 22px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: slideInModal 0.2s ease-out;
+        }
+        @keyframes slideInModal { from { transform: translateY(-40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+        }
+        .close { color: #aaa; font-size: 24px; font-weight: bold; cursor: pointer; line-height: 1; }
+        .close:hover { color: #000; }
+
+        .tabs { display: flex; border-bottom: 2px solid #e9ecef; margin-bottom: 16px; flex-wrap: wrap; }
+        .tab {
+            padding: 10px 16px; cursor: pointer; border: none; background: transparent;
+            border-bottom: 3px solid transparent; font-weight: 600; transition: all 0.2s ease; font-size: 12px;
+        }
+        .tab.active { border-bottom-color: #667eea; color: #667eea; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 600; color: #555; }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+
+        .material-list, .manufacturer-list {
+            border: 1px solid #e0e0e0; border-radius: 10px; max-height: 180px; overflow-y: auto;
+        }
+        .material-item, .manufacturer-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 12px; border-bottom: 1px solid #f0f0f0;
+        }
+        .material-item:last-child, .manufacturer-item:last-child { border-bottom: none; }
+
+        .material-info, .manufacturer-info { flex: 1; }
+        .material-name, .manufacturer-name { font-weight: 600; color: #333; margin-bottom: 3px; }
+        .material-code, .manufacturer-code { font-size: 11px; color: #666; font-family: monospace; }
+
+        .btn-small { padding: 4px 8px; font-size: 12px; border: none; border-radius: 5px; cursor: pointer; margin-left: 5px; }
+        .btn-edit { background: #ffc107; color: #000; }
+        .btn-delete { background: #dc3545; color: white; }
+        .btn-add { background: #28a745; color: white; width: 100%; padding: 8px; margin-top: 8px; }
+        .btn-reset { background: #6f42c1; color: white; width: 100%; padding: 8px; margin-top: 5px; }
+
+        .input-row { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; margin-bottom: 8px; }
+
+        .warning-info {
+            background: #fff3cd; color: #856404; padding: 12px; border-radius: 8px; margin: 8px 0;
+            border: 1px solid #ffeaa7; font-size: 13px;
+        }
+
+        .warning-modal {
+            display: none; position: fixed; z-index: 3000; left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5); animation: fadeIn 0.2s ease-out;
+        }
+        .warning-modal-content {
+            background-color: white; margin: 16% auto; padding: 22px; border-radius: 16px;
+            width: 90%; max-width: 380px; text-align: center; animation: slideInModal 0.2s ease-out;
+        }
+        .warning-modal h3 { color: #856404; margin-bottom: 12px; }
+        .warning-modal-buttons { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
+
+        .manufacturer-warning {
+            background: #d1ecf1; color: #0c5460; padding: 12px; border-radius: 8px; margin: 8px 0;
+            border: 1px solid #bee5eb; font-size: 13px;
+        }
+
+        .popup-info { background: #f8f9fa; border-radius: 12px; padding: 16px; margin-top: 10px; }
+        .popup-info h3 { color: #333; margin-bottom: 10px; font-size: 16px; }
+        .popup-detail {
+            display: flex; justify-content: space-between; align-items: center;
+            margin: 8px 0; padding: 8px; background: white; border-radius: 8px; font-size: 14px;
+        }
+
+        /* Show full path clearly in path input */
+        #officialCfgPathInput { font-family: monospace; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="connection-status" id="connectionStatus"></div>
+
+        <div class="header">
+            <h1 id="appTitle">BoxRFID – Filament Tag Manager</h1>
+            <div class="controls">
+                <button class="icon-btn" id="setupBtn" title="Setup">⚙️</button>
+            </div>
+        </div>
+
+        <div class="section" id="manufacturerSection" style="display: none;">
+            <div class="section-title" id="manufacturerSelectLabel">Hersteller auswählen</div>
+            <select id="manufacturerSelect" class="material-select">
+                <option value="" id="manufacturerPlaceholder">-- Hersteller auswählen --</option>
+            </select>
+        </div>
+
+        <div class="section">
+            <div class="section-title" id="materialLabel">Materialtyp auswählen</div>
+            <select id="materialSelect" class="material-select">
+                <option value="" id="materialPlaceholder">-- Material auswählen --</option>
+            </select>
+        </div>
+
+        <div class="section">
+            <div class="section-title" id="colorLabel">Farbe auswählen</div>
+            <div class="color-grid" id="colorGrid"></div>
+            <div class="color-preview" id="colorPreview">Keine Farbe ausgewählt</div>
+        </div>
+
+        <button class="button btn-write" id="writeBtn">Tag schreiben</button>
+        <button class="button btn-read" id="readBtn">Tag lesen</button>
+        <button class="btn-option" id="autoReadBtn">
+            <span class="dot" id="autoReadDot">⭕</span><span id="autoReadLabel">Auto-Erkennung</span>
+        </button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p id="loadingText">Verarbeitung läuft...</p>
+        </div>
+
+        <div class="status" id="status"></div>
+    </div>
+
+    <div id="tagInfoPopup" class="popup-modal">
+        <div class="popup-content">
+            <div class="popup-info" id="tagInfoContent"></div>
+            <button class="button btn-setup" onclick="closeTagInfoPopup()" id="closePopupBtn">Schließen</button>
+        </div>
+    </div>
+
+    <div id="warningModal" class="warning-modal">
+        <div class="warning-modal-content">
+            <h3 id="warningModalTitle">Warnung</h3>
+            <p id="warningModalMessage"></p>
+            <div class="warning-modal-buttons">
+                <button class="btn-small btn-delete" id="confirmWarningBtn">Ja, fortfahren</button>
+                <button class="btn-small btn-add" id="cancelWarningBtn">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="setupModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="setupTitle">Einstellungen</h2>
+                <span class="close" id="closeModal">&times;</span>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" data-tab="language" id="tabLanguage">🌐 Sprache</button>
+                <button class="tab" data-tab="materials" id="tabMaterials">📦 Materialien</button>
+                <button class="tab" data-tab="manufacturers" id="tabManufacturers" style="display: none;">🏭 Hersteller</button>
+                <button class="tab" data-tab="general" id="tabGeneral">⚙️ Allgemein</button>
+            </div>
+
+            <div id="languageTab" class="tab-content active">
+                <div class="form-group">
+                    <label id="languageSelectLabel">Sprache auswählen:</label>
+                    <select id="languageSelect" class="setup-input">
+                        <option value="de">🇩🇪 Deutsch</option>
+                        <option value="en">🇺🇸 English</option>
+                        <option value="es">🇪🇸 Español</option>
+                        <option value="pt">🇵🇹 Português</option>
+                        <option value="fr">🇫🇷 Français</option>
+                        <option value="zh">🇨🇳 中文 (简体)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="materialsTab" class="tab-content">
+                <div class="form-group">
+                    <label id="materialsListLabel">Materialliste:</label>
+                    <div class="material-list" id="materialsList"></div>
+                    <button class="btn-small btn-add" id="addMaterialBtn">Material hinzufügen</button>
+                    <button class="btn-small btn-reset" id="resetMaterialsBtn">Auf Werkseinstellung zurücksetzen</button>
+                </div>
+
+                <div id="materialForm" style="display: none;">
+                    <h4 id="materialFormTitle">Material hinzufügen/bearbeiten</h4>
+                    <div class="warning-info" id="standardMaterialWarning" style="display: none;">
+                        <strong id="warningTitle">Warnung:</strong>
+                        <p id="warningText">Es wird nicht empfohlen, Standard-Filamente zu ändern. Möchten Sie wirklich fortfahren?</p>
+                        <div style="margin-top: 10px;">
+                            <button class="btn-small btn-delete" id="confirmMaterialWarningBtn">Ja, fortfahren</button>
+                            <button class="btn-small btn-add" id="cancelMaterialWarningBtn">Abbrechen</button>
+                        </div>
+                    </div>
+                    <div id="materialEditForm" style="display: none;">
+                        <div class="input-row">
+                            <input type="text" id="materialNameInput" class="setup-input" placeholder="Material Name">
+                            <select id="materialCodeSelect" class="setup-input">
+                                <option value="">Code auswählen</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn-small btn-add" id="saveMaterialBtn">Speichern</button>
+                            <button class="btn-small btn-delete" id="cancelMaterialBtn">Abbrechen</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="manufacturersTab" class="tab-content">
+                <div class="form-group">
+                    <label id="manufacturersListLabel">Herstellerliste:</label>
+                    <div class="manufacturer-list" id="manufacturersList"></div>
+                    <button class="btn-small btn-add" id="addManufacturerBtn">Hersteller hinzufügen</button>
+                    <button class="btn-small btn-reset" id="resetManufacturersBtn">Auf Werkseinstellung zurücksetzen</button>
+                </div>
+
+                <div id="manufacturerForm" style="display: none;">
+                    <h4 id="manufacturerFormTitle">Hersteller hinzufügen/bearbeiten</h4>
+                    <div class="warning-info" id="standardManufacturerWarning" style="display: none;">
+                        <strong id="manufacturerWarningTitle">Warnung:</strong>
+                        <p id="manufacturerWarningText">Es wird nicht empfohlen, Standard-Hersteller zu ändern. Möchten Sie wirklich fortfahren?</p>
+                        <div style="margin-top: 10px;">
+                            <button class="btn-small btn-delete" id="confirmManufacturerWarningBtn">Ja, fortfahren</button>
+                            <button class="btn-small btn-add" id="cancelManufacturerWarningBtn">Abbrechen</button>
+                        </div>
+                    </div>
+                    <div id="manufacturerEditForm" style="display: none;">
+                        <div class="input-row">
+                            <input type="text" id="manufacturerNameInput" class="setup-input" placeholder="Hersteller Name">
+                            <select id="manufacturerCodeSelect" class="setup-input">
+                                <option value="">Code auswählen</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="btn-small btn-add" id="saveManufacturerBtn">Speichern</button>
+                            <button class="btn-small btn-delete" id="cancelManufacturerBtn">Abbrechen</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="generalTab" class="tab-content">
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="manufacturerCheck">
+                        <label for="manufacturerCheck" id="manufacturerUseLabel">Hersteller verwenden</label>
+                    </div>
+                    <div class="manufacturer-warning" id="manufacturerWarningInfo">
+                        <p id="manufacturerInfoText"><strong>Hinweis:</strong> Diese Funktion findet derzeit keine Verwendung, da als Standard immer QIDI verwendet wird. Es ist möglich, dass diese Funktion zukünftig von QIDI unterstützt wird.</p>
+                    </div>
+                </div>
+
+                <!-- Use Officiall_filase_list.cfg (store full path; validate on enable) -->
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="officialCfgCheck">
+                        <label for="officialCfgCheck" id="officialCfgLabel">Officiall_filase_list.cfg verwenden</label>
+                    </div>
+                    <div id="officialCfgInfo" class="manufacturer-warning" style="display:none;">
+                        <p id="officialCfgInfoText"></p>
+                    </div>
+                    <div id="officialCfgPathGroup" style="display:none; margin-top:8px;">
+                        <div class="input-row" style="grid-template-columns: 1fr auto auto;">
+                            <input type="text" id="officialCfgPathInput" class="setup-input" placeholder="Kein Pfad ausgewählt" readonly>
+                            <button class="btn-small btn-add" id="chooseCfgBtn">Datei wählen</button>
+                            <button class="btn-small btn-reset" id="reloadCfgBtn">Neu laden</button>
+                        </div>
+                    </div>
+                    <input type="file" id="officialCfgFileInput" accept="*/*" style="display:none;">
+                </div>
+
+                <!-- Reset app preferences -->
+                <div class="form-group">
+                    <button class="btn-small btn-reset" id="clearPrefsBtn">App‑Einstellungen zurücksetzen</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="tooltip" role="tooltip" aria-hidden="true"></div>
+
+    <script>
+        const translations = {
+             de: {
+                appTitle: "BoxRFID – Filament Tag Manager",
+                manufacturerLabel: "Hersteller auswählen",
+                manufacturerPlaceholder: "-- Hersteller auswählen --",
+                materialLabel: "Materialtyp auswählen",
+                materialPlaceholder: "-- Material auswählen --",
+                colorLabel: "Farbe auswählen",
+                noColorSelected: "Keine Farbe ausgewählt",
+                colorSelected: "Ausgewählt:",
+                writeBtn: "Tag schreiben",
+                readBtn: "Tag lesen",
+                auto_detect: "Auto-Erkennung",
+                loadingText: "Verarbeitung läuft...",
+                setupTitle: "Einstellungen",
+                tabLanguage: "🌐 Sprache",
+                tabMaterials: "📦 Materialien",
+                tabManufacturers: "🏭 Hersteller",
+                tabGeneral: "⚙️ Allgemein",
+                languageSelectLabel: "Sprache auswählen:",
+                materialsListLabel: "Materialliste:",
+                manufacturersListLabel: "Herstellerliste:",
+                addMaterialBtn: "Material hinzufügen",
+                addManufacturerBtn: "Hersteller hinzufügen",
+                resetMaterialsBtn: "Auf Werkseinstellung zurücksetzen",
+                resetManufacturersBtn: "Auf Werkseinstellung zurücksetzen",
+                materialFormTitle: "Material hinzufügen/bearbeiten",
+                manufacturerFormTitle: "Hersteller hinzufügen/bearbeiten",
+                manufacturerLabel: "Hersteller verwenden",
+                manufacturerInfoText: "Diese Funktion findet derzeit keine Verwendung, da als Standard immer QIDI verwendet wird. Es ist möglich, dass diese Funktion zukünftig von QIDI unterstützt wird.",
+                saveSettingsBtn: "Einstellungen speichern",
+                saveMaterialBtn: "Speichern",
+                saveManufacturerBtn: "Speichern",
+                cancelMaterialBtn: "Abbrechen",
+                cancelManufacturerBtn: "Abbrechen",
+                cancelMaterialWarningBtn: "Abbrechen",
+                closePopupBtn: "Schließen",
+                warningTitle: "Warnung:",
+                manufacturerWarningTitle: "Warnung:",
+                warningText: "Es wird nicht empfohlen, Standard-Filamente zu ändern. Möchten Sie wirklich fortfahren?",
+                manufacturerWarningText: "Es wird nicht empfohlen, Standard-Hersteller zu ändern. Möchten Sie wirklich fortfahren?",
+                confirmWarningBtn: "Ja, fortfahren",
+                confirmManufacturerWarningBtn: "Ja, fortfahren",
+                confirmMaterialWarningBtn: "Ja, fortfahren",
+                cancelWarningBtn: "Abbrechen",
+                cancelManufacturerWarningBtn: "Abbrechen",
+                selectMaterialError: "Bitte wählen Sie ein Material aus!",
+                selectManufacturerError: "Bitte wählen Sie einen Hersteller aus!",
+                selectColorError: "Bitte wählen Sie eine Farbe aus!",
+                writeSuccess: "Tag erfolgreich beschrieben!",
+                readSuccess: "Tag erfolgreich gelesen!",
+                connectionError: "Keine Verbindung zum RFID-Reader",
+                writeError: "Fehler beim Schreiben:",
+                readError: "Fehler beim Lesen:",
+                settingsSaved: "Einstellungen gespeichert!",
+                tagInfoTitle: "Gelesene Tag-Informationen:",
+                material: "Material:",
+                color: "Farbe:",
+                manufacturer: "Hersteller:",
+                resetConfirm: "Alle Änderungen und neu hinzugefügten Datensätze werden gelöscht. Fortfahren?",
+                manufacturerConfirm: "Möchten Sie wirklich die Hersteller-Codes aktivieren?",
+                deleteConfirm: "Wirklich löschen?",
+                deleteWarning: "Es wird nicht empfohlen, Standard-Einträge zu löschen. Wirklich fortfahren?",
+                note: "Hinweis:",
+                materialNamePlaceholder: "Materialname",
+                manufacturerNamePlaceholder: "Herstellername",
+                codeSelectPlaceholder: "Code auswählen",
+                clearPrefsBtn: "App‑Einstellungen zurücksetzen",
+                clearPrefsTitle: "Bestätigen",
+                clearPrefsMessage: "Möchten Sie wirklich die App‑Einstellungen zurücksetzen? Sprache, Auto‑Erkennung und Hersteller‑Verwendung werden auf Standard zurückgesetzt. Benutzerdefinierte Materialien/Hersteller bleiben erhalten.",
+                clearPrefsSuccess: "App‑Einstellungen zurückgesetzt.",
+                officialCfgLabel: "Officiall_filase_list.cfg verwenden",
+                officialCfgChooseBtn: "Datei wählen",
+                officialCfgReloadBtn: "Neu laden",
+                officialCfgPathPlaceholder: "Kein Pfad ausgewählt",
+                officialCfgLoaded: "Konfigurationsdatei geladen.",
+                officialCfgNotFound: "Datei nicht gefunden oder Zugriff nicht möglich. Interne Daten werden verwendet.",
+                officialCfgInvalid: "Ungültige Datei. Interne Daten werden verwendet.",
+                officialCfgPleaseChoose: "Bitte wählen Sie eine Konfigurationsdatei aus.",
+                officialCfgEphemeral: "Es konnte nur der Dateiname gelesen werden. Bitte wählen Sie die Datei über den Dialog erneut, um den vollständigen Pfad zu speichern.",
+                officialCfgInfoText: "Wenn diese Option aktiviert ist, werden Materialien und Hersteller aus der ausgewählten Datei verwendet. Farben werden weiterhin aus der App verwendet.",
+                colors: {
+                    "#FAFAFA": "Weiß", "#060606": "Schwarz", "#D9E3ED": "Hellgrau", "#5CF30F": "Hellgrün",
+                    "#63E492": "Mintgrün", "#2850FF": "Blau", "#FE98FE": "Magenta", "#DFD628": "Gelb",
+                    "#228332": "Grün", "#99DEFF": "Hellblau", "#1714B0": "Dunkelblau", "#CEC0FE": "Lavendelblau",
+                    "#CADE4B": "Gelbgrün", "#1353AB": "Königsblau", "#5EA9FD": "Himmelblau", "#A878FF": "Violett",
+                    "#FE717A": "Rosa", "#FF362D": "Rot", "#E2DFCD": "Beige", "#898F9B": "Grau",
+                    "#6E3812": "Braun", "#CAC59F": "Sandfarben", "#F28636": "Orange", "#B87F2B": "Bronze"
+                }
+            },
+            en: {
+                appTitle: "BoxRFID – Filament Tag Manager",
+                manufacturerLabel: "Select Manufacturer",
+                manufacturerPlaceholder: "-- Select Manufacturer --",
+                materialLabel: "Select Material Type",
+                materialPlaceholder: "-- Select Material --",
+                colorLabel: "Select Color",
+                noColorSelected: "No color selected",
+                colorSelected: "Selected:",
+                writeBtn: "Write Tag",
+                readBtn: "Read Tag",
+                auto_detect: "Auto Detection",
+                loadingText: "Processing...",
+                setupTitle: "Settings",
+                tabLanguage: "🌐 Language",
+                tabMaterials: "📦 Materials",
+                tabManufacturers: "🏭 Manufacturers",
+                tabGeneral: "⚙️ General",
+                languageSelectLabel: "Select Language:",
+                materialsListLabel: "Materials List:",
+                manufacturersListLabel: "Manufacturers List:",
+                addMaterialBtn: "Add Material",
+                addManufacturerBtn: "Add Manufacturer",
+                resetMaterialsBtn: "Reset to Defaults",
+                resetManufacturersBtn: "Reset to Defaults",
+                materialFormTitle: "Add/Edit Material",
+                manufacturerFormTitle: "Add/Edit Manufacturer",
+                manufacturerLabel: "Use Manufacturer",
+                manufacturerInfoText: "This function is currently not in use, as QIDI is always used as default. It is possible that this function will be supported by QIDI in the future.",
+                saveSettingsBtn: "Save Settings",
+                saveMaterialBtn: "Save",
+                saveManufacturerBtn: "Save",
+                cancelMaterialBtn: "Cancel",
+                cancelManufacturerBtn: "Cancel",
+                cancelMaterialWarningBtn: "Cancel",
+                closePopupBtn: "Close",
+                warningTitle: "Warning:",
+                manufacturerWarningTitle: "Warning:",
+                warningText: "It is not recommended to change standard filaments. Do you really want to continue?",
+                manufacturerWarningText: "It is not recommended to change standard manufacturers. Do you really want to continue?",
+                confirmWarningBtn: "Yes, continue",
+                confirmManufacturerWarningBtn: "Yes, continue",
+                confirmMaterialWarningBtn: "Yes, continue",
+                cancelWarningBtn: "Cancel",
+                cancelManufacturerWarningBtn: "Cancel",
+                selectMaterialError: "Please select a material!",
+                selectManufacturerError: "Please select a manufacturer!",
+                selectColorError: "Please select a color!",
+                writeSuccess: "Tag written successfully!",
+                readSuccess: "Tag read successfully!",
+                connectionError: "No connection to RFID reader",
+                writeError: "Write error:",
+                readError: "Read error:",
+                settingsSaved: "Settings saved!",
+                tagInfoTitle: "Read Tag Information:",
+                material: "Material:",
+                color: "Color:",
+                manufacturer: "Manufacturer:",
+                resetConfirm: "All changes and newly added records will be deleted. Continue?",
+                manufacturerConfirm: "Do you really want to enable manufacturer codes?",
+                deleteConfirm: "Really delete?",
+                deleteWarning: "It is not recommended to delete standard entries. Really continue?",
+                note: "Note:",
+                materialNamePlaceholder: "Material name",
+                manufacturerNamePlaceholder: "Manufacturer name",
+                codeSelectPlaceholder: "Select code",
+                clearPrefsBtn: "Reset App Preferences",
+                clearPrefsTitle: "Confirm",
+                clearPrefsMessage: "Do you really want to reset the app preferences? Language, Auto Detection and Manufacturer usage will be reset to defaults. Custom materials/manufacturers will be kept.",
+                clearPrefsSuccess: "App preferences reset.",
+                officialCfgLabel: "Use Officiall_filase_list.cfg",
+                officialCfgChooseBtn: "Choose File",
+                officialCfgReloadBtn: "Reload",
+                officialCfgPathPlaceholder: "No path selected",
+                officialCfgLoaded: "Configuration file loaded.",
+                officialCfgNotFound: "File not found or inaccessible. Using internal data.",
+                officialCfgInvalid: "Invalid file. Using internal data.",
+                officialCfgPleaseChoose: "Please choose a configuration file.",
+                officialCfgEphemeral: "Only file name could be read. Please reselect the file via dialog to store the full path.",
+                officialCfgInfoText: "When enabled, materials and manufacturers are loaded from the selected file. Colors continue to use the app's list.",
+                colors: {
+                    "#FAFAFA": "White", "#060606": "Black", "#D9E3ED": "Light Gray", "#5CF30F": "Light Green",
+                    "#63E492": "Mint Green", "#2850FF": "Blue", "#FE98FE": "Magenta", "#DFD628": "Yellow",
+                    "#228332": "Green", "#99DEFF": "Light Blue", "#1714B0": "Dark Blue", "#CEC0FE": "Lavender",
+                    "#CADE4B": "Yellow Green", "#1353AB": "Royal Blue", "#5EA9FD": "Sky Blue", "#A878FF": "Violet",
+                    "#FE717A": "Pink", "#FF362D": "Red", "#E2DFCD": "Beige", "#898F9B": "Gray",
+                    "#6E3812": "Brown", "#CAC59F": "Sand", "#F28636": "Orange", "#B87F2B": "Bronze"
+                }
+            },
+            es: {
+                appTitle: "BoxRFID – Filament Tag Manager",
+                manufacturerLabel: "Seleccionar Fabricante",
+                manufacturerPlaceholder: "-- Seleccionar Fabricante --",
+                materialLabel: "Seleccionar Tipo de Material",
+                materialPlaceholder: "-- Seleccionar Material --",
+                colorLabel: "Seleccionar Color",
+                noColorSelected: "Ningún color seleccionado",
+                colorSelected: "Seleccionado:",
+                writeBtn: "Escribir Etiqueta",
+                readBtn: "Leer Etiqueta",
+                auto_detect: "Detección automática",
+                loadingText: "Procesando...",
+                setupTitle: "Configuración",
+                tabLanguage: "🌐 Idioma",
+                tabMaterials: "📦 Materiales",
+                tabManufacturers: "🏭 Fabricantes",
+                tabGeneral: "⚙️ General",
+                languageSelectLabel: "Seleccionar Idioma:",
+                materialsListLabel: "Lista de Materiales:",
+                manufacturersListLabel: "Lista de Fabricantes:",
+                addMaterialBtn: "Añadir Material",
+                addManufacturerBtn: "Añadir Fabricante",
+                resetMaterialsBtn: "Restablecer Valores Predeterminados",
+                resetManufacturersBtn: "Restablecer Valores Predeterminados",
+                materialFormTitle: "Añadir/Editar Material",
+                manufacturerFormTitle: "Añadir/Editar Fabricante",
+                manufacturerLabel: "Usar Fabricante",
+                manufacturerInfoText: "Esta función no está en uso actualmente, ya que siempre se usa QIDI como predeterminado. Es posible que esta función sea compatible con QIDI en el futuro.",
+                saveSettingsBtn: "Guardar Configuración",
+                saveMaterialBtn: "Guardar",
+                saveManufacturerBtn: "Guardar",
+                cancelMaterialBtn: "Cancelar",
+                cancelManufacturerBtn: "Cancelar",
+                cancelMaterialWarningBtn: "Cancelar",
+                closePopupBtn: "Cerrar",
+                warningTitle: "Advertencia:",
+                manufacturerWarningTitle: "Advertencia:",
+                warningText: "No se recomienda cambiar los filamentos estándar. ¿Realmente desea continuar?",
+                manufacturerWarningText: "No se recomienda cambiar los fabricantes estándar. ¿Realmente desea continuar?",
+                confirmWarningBtn: "Sí, continuar",
+                confirmManufacturerWarningBtn: "Sí, continuar",
+                confirmMaterialWarningBtn: "Sí, continuar",
+                cancelWarningBtn: "Cancelar",
+                cancelManufacturerWarningBtn: "Cancelar",
+                selectMaterialError: "¡Por favor seleccione un material!",
+                selectManufacturerError: "¡Por favor seleccione un fabricante!",
+                selectColorError: "¡Por favor seleccione una color!",
+                writeSuccess: "¡Etiqueta escrita exitosamente!",
+                readSuccess: "¡Etiqueta leída exitosamente!",
+                connectionError: "Sin conexión al lector RFID",
+                writeError: "Error de escritura:",
+                readError: "Error de lectura:",
+                settingsSaved: "¡Configuración guardada!",
+                tagInfoTitle: "Información de Etiqueta Leída:",
+                material: "Material:",
+                color: "Color:",
+                manufacturer: "Fabricante:",
+                resetConfirm: "Todos los cambios y registros nuevos serán eliminados. ¿Continuar?",
+                manufacturerConfirm: "¿Realmente desea habilitar los códigos de fabricante?",
+                deleteConfirm: "¿Realmente eliminar?",
+                deleteWarning: "No se recomienda eliminar entradas estándar. ¿Realmente continuar?",
+                note: "Nota:",
+                materialNamePlaceholder: "Nombre del material",
+                manufacturerNamePlaceholder: "Nombre del fabricante",
+                codeSelectPlaceholder: "Seleccionar código",
+                clearPrefsBtn: "Restablecer preferencias de la app",
+                clearPrefsTitle: "Confirmar",
+                clearPrefsMessage: "¿Desea realmente restablecer las preferencias de la aplicación? El idioma, la detección automática y el uso de fabricante se restablecerán a los valores predeterminados. Se conservarán los materiales/fabricantes personalizados.",
+                clearPrefsSuccess: "Preferencias de la app restablecidas.",
+                officialCfgLabel: "Usar Officiall_filase_list.cfg",
+                officialCfgChooseBtn: "Elegir archivo",
+                officialCfgReloadBtn: "Recargar",
+                officialCfgPathPlaceholder: "Ninguna ruta seleccionada",
+                officialCfgLoaded: "Archivo de configuración cargado.",
+                officialCfgNotFound: "Archivo no encontrado o inaccesible. Usando datos internos.",
+                officialCfgInvalid: "Archivo inválido. Usando datos internos.",
+                officialCfgPleaseChoose: "Seleccione un archivo de configuración.",
+                officialCfgEphemeral: "Solo se pudo leer el nombre del archivo. Vuelva a seleccionarlo mediante el diálogo para guardar la ruta completa.",
+                officialCfgInfoText: "Si está activado, los materiales y fabricantes se cargan del archivo seleccionado. Los colores siguen usando la lista de la app.",
+                colors: {
+                    "#FAFAFA": "Blanco", "#060606": "Negro", "#D9E3ED": "Gris Claro", "#5CF30F": "Verde Claro",
+                    "#63E492": "Verde Menta", "#2850FF": "Azul", "#FE98FE": "Magenta", "#DFD628": "Amarillo",
+                    "#228332": "Verde", "#99DEFF": "Azul Claro", "#1714B0": "Azul Oscuro", "#CEC0FE": "Lavanda",
+                    "#CADE4B": "Verde Amarillento", "#1353AB": "Azul Real", "#5EA9FD": "Azul Cielo", "#A878FF": "Violeta",
+                    "#FE717A": "Rosa", "#FF362D": "Rojo", "#E2DFCD": "Beige", "#898F9B": "Gris",
+                    "#6E3812": "Marrón", "#CAC59F": "Arena", "#F28636": "Naranja", "#B87F2B": "Bronce"
+                }
+            },
+            pt: {
+                appTitle: "BoxRFID – Filament Tag Manager",
+                manufacturerLabel: "Selecionar Fabricante",
+                manufacturerPlaceholder: "-- Selecionar Fabricante --",
+                materialLabel: "Selecionar Tipo de Material",
+                materialPlaceholder: "-- Selecionar Material --",
+                colorLabel: "Selecionar Cor",
+                noColorSelected: "Nenhuma cor selecionada",
+                colorSelected: "Selecionado:",
+                writeBtn: "Escrever Tag",
+                readBtn: "Ler Tag",
+                auto_detect: "Detecção automática",
+                loadingText: "Processando...",
+                setupTitle: "Configurações",
+                tabLanguage: "🌐 Idioma",
+                tabMaterials: "📦 Materiais",
+                tabManufacturers: "🏭 Fabricantes",
+                tabGeneral: "⚙️ Geral",
+                languageSelectLabel: "Selecionar Idioma:",
+                materialsListLabel: "Lista de Materiais:",
+                manufacturersListLabel: "Lista de Fabricantes:",
+                addMaterialBtn: "Adicionar Material",
+                addManufacturerBtn: "Adicionar Fabricante",
+                resetMaterialsBtn: "Restaurar Padrões",
+                resetManufacturersBtn: "Restaurar Padrões",
+                materialFormTitle: "Adicionar/Editar Material",
+                manufacturerFormTitle: "Adicionar/Editar Fabricante",
+                manufacturerLabel: "Usar Fabricante",
+                manufacturerInfoText: "Esta função não está em uso atualmente, pois QIDI é sempre usado como padrão. É possível que esta função seja suportada pela QIDI no futuro.",
+                saveSettingsBtn: "Salvar Configurações",
+                saveMaterialBtn: "Salvar",
+                saveManufacturerBtn: "Salvar",
+                cancelMaterialBtn: "Cancelar",
+                cancelManufacturerBtn: "Cancelar",
+                cancelMaterialWarningBtn: "Cancelar",
+                closePopupBtn: "Fechar",
+                warningTitle: "Aviso:",
+                manufacturerWarningTitle: "Aviso:",
+                warningText: "Não é recomendado alterar filamentos padrão. Deseja realmente continuar?",
+                manufacturerWarningText: "Não é recomendado alterar fabricantes padrão. Deseja realmente continuar?",
+                confirmWarningBtn: "Sim, continuar",
+                confirmManufacturerWarningBtn: "Sim, continuar",
+                confirmMaterialWarningBtn: "Sim, continuar",
+                cancelWarningBtn: "Cancelar",
+                cancelManufacturerWarningBtn: "Cancelar",
+                selectMaterialError: "Por favor selecione um material!",
+                selectManufacturerError: "Por favor selecione um fabricante!",
+                selectColorError: "Por favor selecione uma cor!",
+                writeSuccess: "Tag escrita com sucesso!",
+                readSuccess: "Tag lida com sucesso!",
+                connectionError: "Sem conexão com o leitor RFID",
+                writeError: "Erro de escrita:",
+                readError: "Erro de leitura:",
+                settingsSaved: "Configurações salvas!",
+                tagInfoTitle: "Informações da Tag Lida:",
+                material: "Material:",
+                color: "Cor:",
+                manufacturer: "Fabricante:",
+                resetConfirm: "Todas as alterações and novos registros serão excluídos. Continuar?",
+                manufacturerConfirm: "Deseja realmente ativar os códigos de fabricante?",
+                deleteConfirm: "Realmente excluir?",
+                deleteWarning: "Não é recomendado excluir entradas padrão. Realmente continuar?",
+                note: "Nota:",
+                materialNamePlaceholder: "Nome do material",
+                manufacturerNamePlaceholder: "Nome do fabricante",
+                codeSelectPlaceholder: "Selecionar código",
+                clearPrefsBtn: "Redefinir preferências do app",
+                clearPrefsTitle: "Confirmar",
+                clearPrefsMessage: "Deseja realmente redefinir as preferências do aplicativo? Idioma, detecção automática e uso de fabricante serão restaurados aos padrões. Materiais/fabricantes personalizados serão mantidos.",
+                clearPrefsSuccess: "Preferências do app redefinidas.",
+                officialCfgLabel: "Usar Officiall_filase_list.cfg",
+                officialCfgChooseBtn: "Escolher arquivo",
+                officialCfgReloadBtn: "Recarregar",
+                officialCfgPathPlaceholder: "Nenhum caminho selecionado",
+                officialCfgLoaded: "Arquivo de configuração carregado.",
+                officialCfgNotFound: "Arquivo não encontrado ou inacessível. Usando dados internos.",
+                officialCfgInvalid: "Arquivo inválido. Usando dados internos.",
+                officialCfgPleaseChoose: "Escolha um arquivo de configuração.",
+                officialCfgEphemeral: "Apenas o nome do arquivo pôde ser lido. Selecione novamente pelo diálogo para salvar o caminho completo.",
+                officialCfgInfoText: "Quando ativado, materiais e fabricantes são carregados do arquivo selecionado. As cores continuam usando a lista do app.",
+                colors: {
+                    "#FAFAFA": "Branco", "#060606": "Preto", "#D9E3ED": "Cinza Claro", "#5CF30F": "Verde Claro",
+                    "#63E492": "Verde Menta", "#2850FF": "Azul", "#FE98FE": "Magenta", "#DFD628": "Amarelo",
+                    "#228332": "Verde", "#99DEFF": "Azul Claro", "#1714B0": "Azul Escuro", "#CEC0FE": "Lavanda",
+                    "#CADE4B": "Verde Amarelado", "#1353AB": "Azul Real", "#5EA9FD": "Azul Céu", "#A878FF": "Violeta",
+                    "#FE717A": "Rosa", "#FF362D": "Vermelho", "#E2DFCD": "Bege", "#898F9B": "Cinza",
+                    "#6E3812": "Marrom", "#CAC59F": "Areia", "#F28636": "Laranja", "#B87F2B": "Bronze"
+                }
+            },
+            fr: {
+                appTitle: "BoxRFID – Filament Tag Manager",
+                manufacturerLabel: "Sélectionner Fabricant",
+                manufacturerPlaceholder: "-- Sélectionner Fabricant --",
+                materialLabel: "Sélectionner le Type de Matériau",
+                materialPlaceholder: "-- Sélectionner Matériau --",
+                colorLabel: "Sélectionner Couleur",
+                noColorSelected: "Aucune couleur sélectionnée",
+                colorSelected: "Sélectionné:",
+                writeBtn: "Écrire Tag",
+                readBtn: "Lire Tag",
+                auto_detect: "Détection automatique",
+                loadingText: "Traitement en cours...",
+                setupTitle: "Paramètres",
+                tabLanguage: "🌐 Langue",
+                tabMaterials: "📦 Matériaux",
+                tabManufacturers: "🏭 Fabricants",
+                tabGeneral: "⚙️ Général",
+                languageSelectLabel: "Sélectionner Langue:",
+                materialsListLabel: "Liste des Matériaux:",
+                manufacturersListLabel: "Liste des Fabricants:",
+                addMaterialBtn: "Ajouter Matériau",
+                addManufacturerBtn: "Ajouter Fabricant",
+                resetMaterialsBtn: "Rétablir Valeurs par Défaut",
+                resetManufacturersBtn: "Rétablir Valeurs par Défaut",
+                materialFormTitle: "Ajouter/Modifier Matériau",
+                manufacturerFormTitle: "Ajouter/Modifier Fabricant",
+                manufacturerLabel: "Utiliser Fabricant",
+                manufacturerInfoText: "Cette fonction n'est actuellement pas utilisée, car QIDI est toujours utilisé par défaut. Il est possible que cette fonction soit prise en charge par QIDI à l'avenir.",
+                saveSettingsBtn: "Enregistrer Paramètres",
+                saveMaterialBtn: "Enregistrer",
+                saveManufacturerBtn: "Enregistrer",
+                cancelMaterialBtn: "Annuler",
+                cancelManufacturerBtn: "Annuler",
+                cancelMaterialWarningBtn: "Annuler",
+                closePopupBtn: "Fermer",
+                warningTitle: "Avertissement:",
+                manufacturerWarningTitle: "Avertissement:",
+                warningText: "Il n'est pas recommandé de modifier les filaments standards. Voulez-vous vraiment continuer?",
+                manufacturerWarningText: "Il n'est pas recommandé de modifier les fabricants standards. Voulez-vous vraiment continuer?",
+                confirmWarningBtn: "Oui, continuer",
+                confirmManufacturerWarningBtn: "Oui, continuer",
+                confirmMaterialWarningBtn: "Oui, continuer",
+                cancelWarningBtn: "Annuler",
+                cancelManufacturerWarningBtn: "Annuler",
+                selectMaterialError: "Veuillez sélectionner un matériau!",
+                selectManufacturerError: "Veuillez sélectionner un fabricant!",
+                selectColorError: "Veuillez sélectionner une couleur!",
+                writeSuccess: "Tag écrit avec succès!",
+                readSuccess: "Tag lu avec succès!",
+                connectionError: "Aucune connexion au lecteur RFID",
+                writeError: "Erreur d'écriture:",
+                readError: "Erreur de lecture:",
+                settingsSaved: "Paramètres enregistrés!",
+                tagInfoTitle: "Informations Tag Lues:",
+                material: "Matériau:",
+                color: "Couleur:",
+                manufacturer: "Fabricant:",
+                resetConfirm: "Tous les changements et nouveaux enregistrements seront supprimés. Continuer?",
+                manufacturerConfirm: "Voulez-vous vraiment activer les codes fabricant?",
+                deleteConfirm: "Vraiment supprimer?",
+                deleteWarning: "Il n'est pas recommandé de supprimer les entrées standards. Vraiment continuer?",
+                note: "Remarque :",
+                materialNamePlaceholder: "Nom du matériau",
+                manufacturerNamePlaceholder: "Nom du fabricant",
+                codeSelectPlaceholder: "Sélectionner le code",
+                clearPrefsBtn: "Réinitialiser les préférences de l’appli",
+                clearPrefsTitle: "Confirmer",
+                clearPrefsMessage: "Voulez‑vous vraiment réinitialiser les préférences de l’application ? La langue, la détection automatique et l’utilisation du fabricant seront rétablies par défaut. Les matériaux/fabricants personnalisés seront conservés.",
+                clearPrefsSuccess: "Préférences de l’appli réinitialisées.",
+                officialCfgLabel: "Utiliser Officiall_filase_list.cfg",
+                officialCfgChooseBtn: "Choisir un fichier",
+                officialCfgReloadBtn: "Recharger",
+                officialCfgPathPlaceholder: "Aucun chemin sélectionné",
+                officialCfgLoaded: "Fichier de configuration chargé.",
+                officialCfgNotFound: "Fichier introuvable ou inaccessible. Utilisation des données internes.",
+                officialCfgInvalid: "Fichier invalide. Utilisation des données internes.",
+                officialCfgPleaseChoose: "Veuillez choisir un fichier de configuration.",
+                officialCfgEphemeral: "Seul le nom du fichier a pu être lu. Veuillez le resélectionner via le dialogue pour enregistrer le chemin complet.",
+                officialCfgInfoText: "Lorsque l’option est activée, les matériaux et fabricants sont chargés depuis le fichier sélectionné. Les couleurs continuent d’utiliser la liste de l’application.",
+                colors: {
+                    "#FAFAFA": "Blanc", "#060606": "Noir", "#D9E3ED": "Gris Clair", "#5CF30F": "Vert Clair",
+                    "#63E492": "Vert Menthe", "#2850FF": "Bleu", "#FE98FE": "Magenta", "#DFD628": "Jaune",
+                    "#228332": "Vert", "#99DEFF": "Bleu Clair", "#1714B0": "Bleu Foncé", "#CEC0FE": "Lavande",
+                    "#CADE4B": "Vert Jaunâtre", "#1353AB": "Bleu Royal", "#5EA9FD": "Bleu Ciel", "#A878FF": "Violet",
+                    "#FE717A": "Rose", "#FF362D": "Rouge", "#E2DFCD": "Beige", "#898F9B": "Gris",
+                    "#6E3812": "Marron", "#CAC59F": "Sable", "#F28636": "Orange", "#B87F2B": "Bronze"
+                }
+            },
+            zh: {
+                appTitle: "QIDI RFID 标签读写器",
+                manufacturerLabel: "选择制造商",
+                manufacturerPlaceholder: "-- 选择制造商 --",
+                materialLabel: "选择材料类型",
+                materialPlaceholder: "-- 选择材料 --",
+                colorLabel: "选择颜色",
+                noColorSelected: "未选择颜色",
+                colorSelected: "已选择:",
+                writeBtn: "写入标签",
+                readBtn: "读取标签",
+                auto_detect: "自动检测",
+                loadingText: "处理中...",
+                setupTitle: "设置",
+                tabLanguage: "🌐 语言",
+                tabMaterials: "📦 材料",
+                tabManufacturers: "🏭 制造商",
+                tabGeneral: "⚙️ 常规",
+                languageSelectLabel: "选择语言:",
+                materialsListLabel: "材料列表:",
+                manufacturersListLabel: "制造商列表:",
+                addMaterialBtn: "添加材料",
+                addManufacturerBtn: "添加制造商",
+                resetMaterialsBtn: "恢复默认设置",
+                resetManufacturersBtn: "恢复默认设置",
+                materialFormTitle: "添加/编辑材料",
+                manufacturerFormTitle: "添加/编辑制造商",
+                manufacturerLabel: "使用制造商",
+                manufacturerInfoText: "此功能目前不使用，因为默认总是使用QIDI。未来可能QIDI会支持此功能。",
+                saveSettingsBtn: "保存设置",
+                saveMaterialBtn: "保存",
+                saveManufacturerBtn: "保存",
+                cancelMaterialBtn: "取消",
+                cancelManufacturerBtn: "取消",
+                cancelMaterialWarningBtn: "取消",
+                closePopupBtn: "关闭",
+                warningTitle: "警告:",
+                manufacturerWarningTitle: "警告:",
+                warningText: "不建议更改标准材料。您真的要继续吗？",
+                manufacturerWarningText: "不建议更改标准制造商。您真的要继续吗？",
+                confirmWarningBtn: "是，继续",
+                confirmManufacturerWarningBtn: "是，继续",
+                confirmMaterialWarningBtn: "是，继续",
+                cancelWarningBtn: "取消",
+                cancelManufacturerWarningBtn: "取消",
+                selectMaterialError: "请选择材料！",
+                selectManufacturerError: "请选择制造商！",
+                selectColorError: "请选择颜色！",
+                writeSuccess: "标签写入成功！",
+                readSuccess: "标签读取成功！",
+                connectionError: "未连接到RFID读取器",
+                writeError: "写入错误:",
+                readError: "读取错误:",
+                settingsSaved: "设置已保存！",
+                tagInfoTitle: "读取的标签信息:",
+                material: "材料:",
+                color: "颜色:",
+                manufacturer: "制造商:",
+                resetConfirm: "所有更改和新添加的记录将被删除。继续？",
+                manufacturerConfirm: "您真的要启用制造商代码吗？",
+                deleteConfirm: "真的要删除吗？",
+                deleteWarning: "不建议删除标准条目。真的要继续吗？",
+                note: "提示:",
+                materialNamePlaceholder: "材料名称",
+                manufacturerNamePlaceholder: "制造商名称",
+                codeSelectPlaceholder: "选择代码",
+                clearPrefsBtn: "重置应用首选项",
+                clearPrefsTitle: "确认",
+                clearPrefsMessage: "是否确定要重置应用首选项？语言、自动检测和制造商使用将恢复为默认。自定义的材料/制造商将保留。",
+                clearPrefsSuccess: "首选项已重置。",
+                officialCfgLabel: "使用 Officiall_filase_list.cfg",
+                officialCfgChooseBtn: "选择文件",
+                officialCfgReloadBtn: "重新加载",
+                officialCfgPathPlaceholder: "未选择路径",
+                officialCfgLoaded: "配置文件已加载。",
+                officialCfgNotFound: "未找到文件或无法访问。正在使用内部数据。",
+                officialCfgInvalid: "无效的文件。正在使用内部数据。",
+                officialCfgPleaseChoose: "请选择一个配置文件。",
+                officialCfgEphemeral: "只能读取文件名。请通过对话框重新选择该文件以保存完整路径。",
+                officialCfgInfoText: "启用后，材料和制造商将从所选文件加载。颜色仍使用应用内列表。",
+                colors: {
+                    "#FAFAFA": "白色", "#060606": "黑色", "#D9E3ED": "浅灰色", "#5CF30F": "浅绿色",
+                    "#63E492": "薄荷绿", "#2850FF": "蓝色", "#FE98FE": "洋红色", "#DFD628": "黄色",
+                    "#228332": "绿色", "#99DEFF": "浅蓝色", "#1714B0": "深蓝色", "#CEC0FE": "薰衣草色",
+                    "#CADE4B": "黄绿色", "#1353AB": "宝蓝色", "#5EA9FD": "天蓝色", "#A878FF": "紫色",
+                    "#FE717A": "粉色", "#FF362D": "红色", "#E2DFCD": "米色", "#898F9B": "灰色",
+                    "#6E3812": "棕色", "#CAC59F": "沙色", "#F28636": "橙色", "#B87F2B": "青铜色"
+                }
+            }
+        };
+
+        // default materials
+        const DEFAULT_MATERIALS = {
+            1: "PLA", 2: "PLA Matte", 3: "PLA Metal", 4: "PLA Silk", 5: "PLA-CF", 6: "PLA-Wood",
+            7: "PLA Basic", 8: "PLA Matte Basic",
+            11: "ABS", 12: "ABS-GF", 13: "ABS-Metal", 14: "ABS-Odorless",
+            18: "ASA", 19: "ASA-AERO",
+            24: "UltraPA", 25: "PA12-CF", 26: "UltraPA-CF25",
+            30: "PAHT-CF", 31: "PAHT-GF", 32: "Support For PAHT", 33: "Support For PET/PA",
+            34: "PC/ABS-FR",
+            37: "PET-CF", 38: "PET-GF",
+            39: "PETG Basic", 40: "PETG-Though", 41: "PETG",
+            44: "PPS-CF", 45: "PETG Translucent",
+            47: "PVA", 49: "TPU-AERO", 50: "TPU"
+        };
+        const DEFAULT_MANUFACTURERS = { 0: "Generic", 1: "QIDI" };
+        const DEFAULT_COLORS = {
+            "#FAFAFA": 1, "#060606": 2, "#D9E3ED": 3, "#5CF30F": 4, "#63E492": 5, "#2850FF": 6,
+            "#FE98FE": 7, "#DFD628": 8, "#228332": 9, "#99DEFF": 10, "#1714B0": 11, "#CEC0FE": 12,
+            "#CADE4B": 13, "#1353AB": 14, "#5EA9FD": 15, "#A878FF": 16, "#FE717A": 17, "#FF362D": 18,
+            "#E2DFCD": 19, "#898F9B": 20, "#6E3812": 21, "#CAC59F": 22, "#F28636": 23, "#B87F2B": 24
+        };
+
+        let currentLanguage = 'de';
+
+        // Internal (user) datasets
+        let userMaterials = { ...DEFAULT_MATERIALS };
+        let userManufacturers = { ...DEFAULT_MANUFACTURERS };
+
+        // Effective datasets (based on source selection)
+        let materials = {};
+        let manufacturers = {};
+        let colors = { ...DEFAULT_COLORS };
+
+        let useManufacturer = false;
+
+        // Official cfg usage/preferences
+        let useOfficialCfg = false;
+        let officialCfgPath = '';
+        let officialCfgIsEphemeral = false; // true when only a file name (no full path) is available
+        let parsedMaterials = null;
+        let parsedManufacturers = null;
+
+        let selectedMaterial = null;
+        let selectedManufacturer = null;
+        let selectedColor = null;
+        let editingMaterialId = null;
+        let editingManufacturerId = null;
+
+        let autoReadActive = false;
+        let lastAutoDataSerialized = null;
+
+        const elements = {
+            manufacturerSection: document.getElementById('manufacturerSection'),
+            manufacturerSelect: document.getElementById('manufacturerSelect'),
+            materialSelect: document.getElementById('materialSelect'),
+            colorGrid: document.getElementById('colorGrid'),
+            colorPreview: document.getElementById('colorPreview'),
+            writeBtn: document.getElementById('writeBtn'),
+            readBtn: document.getElementById('readBtn'),
+            autoReadBtn: document.getElementById('autoReadBtn'),
+            autoReadDot: document.getElementById('autoReadDot'),
+            autoReadLabel: document.getElementById('autoReadLabel'),
+            status: document.getElementById('status'),
+            tagInfoPopup: document.getElementById('tagInfoPopup'),
+            loading: document.getElementById('loading'),
+            connectionStatus: document.getElementById('connectionStatus'),
+            setupBtn: document.getElementById('setupBtn'),
+            setupModal: document.getElementById('setupModal'),
+            closeModal: document.getElementById('closeModal'),
+            languageSelect: document.getElementById('languageSelect'),
+            materialsList: document.getElementById('materialsList'),
+            manufacturersList: document.getElementById('manufacturersList'),
+            addMaterialBtn: document.getElementById('addMaterialBtn'),
+            addManufacturerBtn: document.getElementById('addManufacturerBtn'),
+            resetMaterialsBtn: document.getElementById('resetMaterialsBtn'),
+            resetManufacturersBtn: document.getElementById('resetManufacturersBtn'),
+            materialForm: document.getElementById('materialForm'),
+            manufacturerForm: document.getElementById('manufacturerForm'),
+            materialNameInput: document.getElementById('materialNameInput'),
+            materialCodeSelect: document.getElementById('materialCodeSelect'),
+            manufacturerNameInput: document.getElementById('manufacturerNameInput'),
+            manufacturerCodeSelect: document.getElementById('manufacturerCodeSelect'),
+            saveMaterialBtn: document.getElementById('saveMaterialBtn'),
+            saveManufacturerBtn: document.getElementById('saveManufacturerBtn'),
+            cancelMaterialBtn: document.getElementById('cancelMaterialBtn'),
+            cancelManufacturerBtn: document.getElementById('cancelManufacturerBtn'),
+            manufacturerCheck: document.getElementById('manufacturerCheck'),
+            standardMaterialWarning: document.getElementById('standardMaterialWarning'),
+            standardManufacturerWarning: document.getElementById('standardManufacturerWarning'),
+            materialEditForm: document.getElementById('materialEditForm'),
+            manufacturerEditForm: document.getElementById('manufacturerEditForm'),
+            warningModal: document.getElementById('warningModal'),
+            warningModalTitle: document.getElementById('warningModalTitle'),
+            warningModalMessage: document.getElementById('warningModalMessage'),
+            tabManufacturers: document.getElementById('tabManufacturers'),
+            confirmMaterialWarningBtn: document.getElementById('confirmMaterialWarningBtn'),
+            cancelMaterialWarningBtn: document.getElementById('cancelMaterialWarningBtn'),
+            confirmManufacturerWarningBtn: document.getElementById('confirmManufacturerWarningBtn'),
+            cancelManufacturerWarningBtn: document.getElementById('cancelManufacturerWarningBtn'),
+            clearPrefsBtn: document.getElementById('clearPrefsBtn'),
+            // Official cfg controls
+            officialCfgCheck: document.getElementById('officialCfgCheck'),
+            officialCfgLabel: document.getElementById('officialCfgLabel'),
+            officialCfgInfo: document.getElementById('officialCfgInfo'),
+            officialCfgInfoText: document.getElementById('officialCfgInfoText'),
+            officialCfgPathGroup: document.getElementById('officialCfgPathGroup'),
+            officialCfgPathInput: document.getElementById('officialCfgPathInput'),
+            chooseCfgBtn: document.getElementById('chooseCfgBtn'),
+            reloadCfgBtn: document.getElementById('reloadCfgBtn'),
+            officialCfgFileInput: document.getElementById('officialCfgFileInput'),
+            // Labels that need disambiguation
+            manufacturerSelectLabel: document.getElementById('manufacturerSelectLabel'),
+            manufacturerUseLabel: document.getElementById('manufacturerUseLabel')
+        };
+
+        const tooltipEl = document.getElementById('tooltip');
+        function showTooltip(text, evt) { tooltipEl.textContent = text; tooltipEl.style.display = 'block'; positionTooltip(evt); }
+        function positionTooltip(evt) { const offset = 12; tooltipEl.style.left = (evt.clientX + offset) + 'px'; tooltipEl.style.top = (evt.clientY + offset) + 'px'; }
+        function hideTooltip() { tooltipEl.style.display = 'none'; }
+
+        function detectSystemLanguage() {
+            const browserLang = navigator.language.substr(0, 2);
+            return translations[browserLang] ? browserLang : 'en';
+        }
+
+        function isLikelyFullPath(p) {
+            return !!p && (p.includes('/') || p.includes('\\'));
+        }
+
+        function setOfficialPathDisplay() {
+            elements.officialCfgPathInput.value = officialCfgPath || '';
+            elements.officialCfgPathInput.title = officialCfgPath || '';
+        }
+
+        function loadSettings() {
+            const saved = JSON.parse(localStorage.getItem('rfidSettings') || '{}');
+            currentLanguage = saved.language || detectSystemLanguage();
+
+            userMaterials = saved.materials || { ...DEFAULT_MATERIALS };
+            userManufacturers = saved.manufacturers || { ...DEFAULT_MANUFACTURERS };
+            colors = saved.colors || { ...DEFAULT_COLORS };
+
+            useManufacturer = saved.useManufacturer !== undefined ? saved.useManufacturer : false;
+
+            useOfficialCfg = !!saved.useOfficialCfg;
+            officialCfgPath = saved.officialCfgPath || '';
+            officialCfgIsEphemeral = !!saved.officialCfgIsEphemeral;
+
+            applyDataSource(false);
+        }
+
+        function saveSettings() {
+            const settings = {
+                language: currentLanguage,
+                materials: userMaterials,
+                manufacturers: userManufacturers,
+                colors,
+                useManufacturer,
+                useOfficialCfg,
+                officialCfgPath,
+                officialCfgIsEphemeral
+            };
+            localStorage.setItem('rfidSettings', JSON.stringify(settings));
+        }
+
+        function applyDataSource(showMsg = false) {
+            if (useOfficialCfg && parsedMaterials && parsedManufacturers) {
+                materials = { ...parsedMaterials };
+                manufacturers = { ...parsedManufacturers };
+                if (showMsg) showStatus((translations[currentLanguage] || translations.en).officialCfgLoaded, 'success');
+            } else {
+                materials = { ...userMaterials };
+                manufacturers = { ...userManufacturers };
+            }
+            updateMaterialSelect();
+            updateManufacturerSelect();
+            updateMaterialsList();
+            updateManufacturersList();
+        }
+
+        function updateTexts() {
+            const t = translations[currentLanguage] || translations.en;
+            document.getElementById('appTitle').textContent = t.appTitle;
+            if (elements.manufacturerSelectLabel) elements.manufacturerSelectLabel.textContent = t.manufacturerLabel;
+            document.getElementById('manufacturerPlaceholder').textContent = t.manufacturerPlaceholder;
+            document.getElementById('materialLabel').textContent = t.materialLabel;
+            document.getElementById('materialPlaceholder').textContent = t.materialPlaceholder;
+            document.getElementById('colorLabel').textContent = t.colorLabel;
+            document.getElementById('writeBtn').textContent = t.writeBtn;
+            document.getElementById('readBtn').textContent = t.readBtn;
+            document.getElementById('loadingText').textContent = t.loadingText;
+            document.getElementById('closePopupBtn').textContent = t.closePopupBtn;
+
+            elements.autoReadLabel.textContent = t.auto_detect || 'Auto-Erkennung';
+
+            document.getElementById('setupTitle').textContent = t.setupTitle;
+            document.getElementById('tabLanguage').textContent = t.tabLanguage;
+            document.getElementById('tabMaterials').textContent = t.tabMaterials;
+            document.getElementById('tabManufacturers').textContent = t.tabManufacturers;
+            document.getElementById('tabGeneral').textContent = t.tabGeneral;
+            document.getElementById('languageSelectLabel').textContent = t.languageSelectLabel;
+            document.getElementById('materialsListLabel').textContent = t.materialsListLabel;
+            document.getElementById('manufacturersListLabel').textContent = t.manufacturersListLabel;
+            document.getElementById('addMaterialBtn').textContent = t.addMaterialBtn;
+            document.getElementById('addManufacturerBtn').textContent = t.addManufacturerBtn;
+            document.getElementById('resetMaterialsBtn').textContent = t.resetMaterialsBtn;
+            document.getElementById('resetManufacturersBtn').textContent = t.resetManufacturersBtn;
+            document.getElementById('materialFormTitle').textContent = t.materialFormTitle;
+            document.getElementById('manufacturerFormTitle').textContent = t.manufacturerFormTitle;
+
+            if (elements.manufacturerUseLabel) elements.manufacturerUseLabel.textContent = t.manufacturerLabel;
+            document.getElementById('manufacturerInfoText').innerHTML = `<strong>${t.note}</strong> ${t.manufacturerInfoText}`;
+
+            document.getElementById('saveMaterialBtn').textContent = t.saveMaterialBtn;
+            document.getElementById('saveManufacturerBtn').textContent = t.saveManufacturerBtn;
+            document.getElementById('cancelMaterialBtn').textContent = t.cancelMaterialBtn;
+            document.getElementById('cancelManufacturerBtn').textContent = t.cancelManufacturerBtn;
+
+            if (elements.officialCfgLabel) elements.officialCfgLabel.textContent = t.officialCfgLabel;
+            if (elements.chooseCfgBtn) elements.chooseCfgBtn.textContent = t.officialCfgChooseBtn;
+            if (elements.reloadCfgBtn) elements.reloadCfgBtn.textContent = t.officialCfgReloadBtn;
+            if (elements.officialCfgPathInput) elements.officialCfgPathInput.placeholder = t.officialCfgPathPlaceholder;
+            if (elements.officialCfgInfoText) elements.officialCfgInfoText.textContent = t.officialCfgInfoText;
+
+            if (elements.materialNameInput) elements.materialNameInput.placeholder = t.materialNamePlaceholder;
+            if (elements.manufacturerNameInput) elements.manufacturerNameInput.placeholder = t.manufacturerNamePlaceholder;
+
+            const confirmMaterialWarningBtn = document.getElementById('confirmMaterialWarningBtn');
+            const cancelMaterialWarningBtn = document.getElementById('cancelMaterialWarningBtn');
+            if (confirmMaterialWarningBtn) confirmMaterialWarningBtn.textContent = t.confirmMaterialWarningBtn || t.confirmWarningBtn;
+            if (cancelMaterialWarningBtn) cancelMaterialWarningBtn.textContent = t.cancelMaterialWarningBtn || t.cancelWarningBtn;
+
+            const confirmManufacturerWarningBtn = document.getElementById('confirmManufacturerWarningBtn');
+            const cancelManufacturerWarningBtn = document.getElementById('cancelManufacturerWarningBtn');
+            if (confirmManufacturerWarningBtn) confirmManufacturerWarningBtn.textContent = t.confirmManufacturerWarningBtn || t.confirmWarningBtn;
+            if (cancelManufacturerWarningBtn) cancelManufacturerWarningBtn.textContent = t.cancelManufacturerWarningBtn || t.cancelWarningBtn;
+
+            const confirmWarningBtn = document.getElementById('confirmWarningBtn');
+            const cancelWarningBtn = document.getElementById('cancelWarningBtn');
+            if (confirmWarningBtn) confirmWarningBtn.textContent = t.confirmWarningBtn;
+            if (cancelWarningBtn) cancelWarningBtn.textContent = t.cancelWarningBtn;
+
+            const clearPrefsBtn = document.getElementById('clearPrefsBtn');
+            if (clearPrefsBtn) clearPrefsBtn.textContent = t.clearPrefsBtn;
+
+            if (!selectedColor) elements.colorPreview.textContent = t.noColorSelected;
+
+            document.querySelectorAll('.color-item').forEach(ci => {
+                const hex = ci.dataset.color;
+                ci.dataset.tooltip = (t.colors || {})[hex] || hex;
+            });
+
+            const warningTitle = document.getElementById('warningTitle');
+            const warningText = document.getElementById('warningText');
+            if (warningTitle) warningTitle.textContent = t.warningTitle;
+            if (warningText) warningText.textContent = t.warningText;
+
+            const manufacturerWarningTitle = document.getElementById('manufacturerWarningTitle');
+            const manufacturerWarningText = document.getElementById('manufacturerWarningText');
+            if (manufacturerWarningTitle) manufacturerWarningTitle.textContent = t.manufacturerWarningTitle;
+            if (manufacturerWarningText) manufacturerWarningText.textContent = t.manufacturerWarningText;
+
+            updateMaterialCodeOptions(true);
+            updateManufacturerCodeOptions(true);
+        }
+
+        function updateMaterialSelect() {
+            const select = elements.materialSelect;
+            const currentValue = select.value;
+            while (select.children.length > 1) select.removeChild(select.lastChild);
+            Object.entries(materials).forEach(([code, name]) => {
+                const option = document.createElement('option');
+                option.value = code; option.textContent = name; select.appendChild(option);
+            });
+            if (currentValue && materials[currentValue]) { select.value = currentValue; selectedMaterial = currentValue; }
+        }
+        function updateManufacturerSelect() {
+            const select = elements.manufacturerSelect;
+            const currentValue = select.value;
+            while (select.children.length > 1) select.removeChild(select.lastChild);
+            Object.entries(manufacturers).forEach(([code, name]) => {
+                const option = document.createElement('option');
+                option.value = code; option.textContent = name; select.appendChild(option);
+            });
+            if (currentValue && manufacturers[currentValue]) { select.value = currentValue; selectedManufacturer = currentValue; }
+        }
+
+        function initColorGrid() {
+            elements.colorGrid.innerHTML = '';
+            Object.entries(colors).forEach(([hex, value]) => {
+                const colorItem = document.createElement('div');
+                colorItem.className = 'color-item';
+                colorItem.style.backgroundColor = hex;
+                colorItem.dataset.color = hex;
+                colorItem.dataset.value = value;
+
+                const t = translations[currentLanguage] || translations.en;
+                colorItem.dataset.tooltip = (t.colors || {})[hex] || hex;
+
+                colorItem.addEventListener('mouseenter', (e) => showTooltip(colorItem.dataset.tooltip, e));
+                colorItem.addEventListener('mousemove', positionTooltip);
+                colorItem.addEventListener('mouseleave', hideTooltip);
+                colorItem.addEventListener('click', () => selectColor(hex, colorItem));
+                elements.colorGrid.appendChild(colorItem);
+            });
+        }
+
+        function selectColor(hex, element) {
+            document.querySelectorAll('.color-item').forEach(item => item.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedColor = hex;
+            const t = translations[currentLanguage] || translations.en;
+            const colorName = (t.colors || {})[hex] || hex;
+            elements.colorPreview.style.backgroundColor = hex;
+            elements.colorPreview.textContent = `${t.colorSelected} ${colorName}`;
+            elements.colorPreview.style.color = getContrastColor(hex);
+        }
+        function getContrastColor(hex) {
+            const r = parseInt(hex.substr(1, 2), 16);
+            const g = parseInt(hex.substr(3, 2), 16);
+            const b = parseInt(hex.substr(5, 2), 16);
+            const brightness = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+            return brightness > 128 ? '#000000' : '#ffffff';
+        }
+
+        function updateMaterialsList() {
+            const list = elements.materialsList;
+            list.innerHTML = '';
+            Object.entries(materials).forEach(([code, name]) => {
+                const item = document.createElement('div');
+                item.className = 'material-item';
+                const controls = useOfficialCfg ? '' : `
+                    <button class="btn-small btn-edit" onclick="editMaterial('${code}')">✏️</button>
+                    <button class="btn-small btn-delete" onclick="deleteMaterial('${code}')">🗑️</button>
+                `;
+                item.innerHTML = `
+                    <div class="material-info">
+                        <div class="material-name">${name}</div>
+                        <div class="material-code">Code: ${code}</div>
+                    </div>
+                    <div>${controls}</div>
+                `;
+                list.appendChild(item);
+            });
+        }
+        function updateManufacturersList() {
+            const list = elements.manufacturersList;
+            list.innerHTML = '';
+            Object.entries(manufacturers).forEach(([code, name]) => {
+                const item = document.createElement('div');
+                item.className = 'manufacturer-item';
+                const controls = useOfficialCfg ? '' : `
+                    <button class="btn-small btn-edit" onclick="editManufacturer('${code}')">✏️</button>
+                    <button class="btn-small btn-delete" onclick="deleteManufacturer('${code}')">🗑️</button>
+                `;
+                item.innerHTML = `
+                    <div class="manufacturer-info">
+                        <div class="manufacturer-name">${name}</div>
+                        <div class="manufacturer-code">Code: ${code}</div>
+                    </div>
+                    <div>${controls}</div>
+                `;
+                list.appendChild(item);
+            });
+        }
+        function updateMaterialCodeOptions(preserve = false) {
+            const t = translations[currentLanguage] || translations.en;
+            const select = elements.materialCodeSelect;
+            const currentValue = preserve ? select.value : '';
+            select.innerHTML = `<option value="">${t.codeSelectPlaceholder}</option>`;
+            for (let i = 1; i <= 50; i++) {
+                if (!userMaterials[i] || editingMaterialId == i) {
+                    const option = document.createElement('option');
+                    option.value = i; option.textContent = i; select.appendChild(option);
+                }
+            }
+            if (preserve && currentValue && Array.from(select.options).some(o => o.value === currentValue)) {
+                select.value = currentValue;
+            }
+        }
+        function updateManufacturerCodeOptions(preserve = false) {
+            const t = translations[currentLanguage] || translations.en;
+            const select = elements.manufacturerCodeSelect;
+            const currentValue = preserve ? select.value : '';
+            select.innerHTML = `<option value="">${t.codeSelectPlaceholder}</option>`;
+            for (let i = 0; i <= 10; i++) {
+                if (!userManufacturers[i] || editingManufacturerId == i) {
+                    const option = document.createElement('option');
+                    option.value = i; option.textContent = i; select.appendChild(option);
+                }
+            }
+            if (preserve && currentValue && Array.from(select.options).some(o => o.value === currentValue)) {
+                select.value = currentValue;
+            }
+        }
+
+        function showWarningModal(title, message, onConfirm, onCancel = null) {
+            elements.warningModalTitle.textContent = title;
+            elements.warningModalMessage.textContent = message;
+            elements.warningModal.style.display = 'block';
+
+            const confirmBtn = document.getElementById('confirmWarningBtn');
+            const cancelBtn = document.getElementById('cancelWarningBtn');
+
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            const newCancelBtn = cancelBtn.cloneNode(true);
+
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+            newConfirmBtn.addEventListener('click', () => {
+                elements.warningModal.style.display = 'none';
+                if (onConfirm) onConfirm();
+            });
+            newCancelBtn.addEventListener('click', () => {
+                elements.warningModal.style.display = 'none';
+                if (onCancel) onCancel();
+            });
+
+            newConfirmBtn.id = 'confirmWarningBtn';
+            newCancelBtn.id = 'cancelWarningBtn';
+        }
+
+        function editMaterial(code) {
+            const t = translations[currentLanguage] || translations.en;
+            const isStandard = DEFAULT_MATERIALS[code] !== undefined;
+            if (isStandard) {
+                showWarningModal(t.warningTitle, t.warningText, () => {
+                    elements.materialForm.style.display = 'block';
+                    elements.standardMaterialWarning.style.display = 'none';
+                    elements.materialEditForm.style.display = 'block';
+                    showMaterialEditForm(code);
+                });
+            } else {
+                elements.materialForm.style.display = 'block';
+                elements.standardMaterialWarning.style.display = 'none';
+                elements.materialEditForm.style.display = 'block';
+                showMaterialEditForm(code);
+            }
+        }
+        function showMaterialEditForm(code) {
+            editingMaterialId = code;
+            elements.materialNameInput.value = userMaterials[code] || materials[code] || '';
+            updateMaterialCodeOptions();
+            elements.materialCodeSelect.value = code;
+        }
+
+        function editManufacturer(code) {
+            const t = translations[currentLanguage] || translations.en;
+            const isStandard = DEFAULT_MANUFACTURERS[code] !== undefined;
+            if (isStandard) {
+                showWarningModal(t.manufacturerWarningTitle, t.manufacturerWarningText, () => {
+                    elements.manufacturerForm.style.display = 'block';
+                    elements.standardManufacturerWarning.style.display = 'none';
+                    elements.manufacturerEditForm.style.display = 'block';
+                    showManufacturerEditForm(code);
+                });
+            } else {
+                elements.manufacturerForm.style.display = 'block';
+                elements.standardManufacturerWarning.style.display = 'none';
+                elements.manufacturerEditForm.style.display = 'block';
+                showManufacturerEditForm(code);
+            }
+        }
+        function showManufacturerEditForm(code) {
+            editingManufacturerId = code;
+            elements.manufacturerNameInput.value = userManufacturers[code] || manufacturers[code] || '';
+            updateManufacturerCodeOptions();
+            elements.manufacturerCodeSelect.value = code;
+        }
+
+        function deleteMaterial(code) {
+            const t = translations[currentLanguage] || translations.en;
+            const isStandard = DEFAULT_MATERIALS[code] !== undefined;
+            const title = t.warningTitle || 'Warnung';
+            const message = isStandard ? t.deleteWarning : t.deleteConfirm;
+            showWarningModal(title, message, () => {
+                delete userMaterials[code];
+                applyDataSource();
+                saveSettings();
+            });
+        }
+        function deleteManufacturer(code) {
+            const t = translations[currentLanguage] || translations.en;
+            const isQIDI = code == '1';
+            const title = t.manufacturerWarningTitle || 'Warnung';
+            const message = isQIDI ? t.deleteWarning : t.deleteConfirm;
+            showWarningModal(title, message, () => {
+                delete userManufacturers[code];
+                applyDataSource();
+                saveSettings();
+            });
+        }
+        function resetMaterials() {
+            const t = translations[currentLanguage] || translations.en;
+            showWarningModal(t.warningTitle, t.resetConfirm, () => {
+                userMaterials = { ...DEFAULT_MATERIALS };
+                applyDataSource();
+                saveSettings();
+                showStatus(t.settingsSaved, 'success');
+            });
+        }
+        function resetManufacturers() {
+            const t = translations[currentLanguage] || translations.en;
+            showWarningModal(t.manufacturerWarningTitle, t.resetConfirm, () => {
+                userManufacturers = { ...DEFAULT_MANUFACTURERS };
+                applyDataSource();
+                saveSettings();
+                showStatus(t.settingsSaved, 'success');
+            });
+        }
+
+        function toggleManufacturerSection() {
+            elements.manufacturerSection.style.display = useManufacturer ? 'block' : 'none';
+            elements.tabManufacturers.style.display = useManufacturer ? 'block' : 'none';
+        }
+
+        function toggleOfficialCfgControls() {
+            elements.officialCfgPathGroup.style.display = useOfficialCfg ? 'block' : 'none';
+            elements.officialCfgInfo.style.display = useOfficialCfg ? 'block' : 'none';
+            setOfficialPathDisplay();
+            if (useOfficialCfg && officialCfgIsEphemeral) {
+                const t = translations[currentLanguage] || translations.en;
+                showStatus(t.officialCfgEphemeral, 'info');
+            }
+        }
+
+        function closeTagInfoPopup() { elements.tagInfoPopup.style.display = 'none'; }
+        window.closeTagInfoPopup = closeTagInfoPopup;
+
+        function showStatus(message, type = 'info') {
+            elements.status.className = `status ${type}`;
+            elements.status.textContent = message;
+            elements.status.style.display = 'block';
+            setTimeout(() => { elements.status.style.display = 'none'; }, 5000);
+        }
+        function showLoading(show) { elements.loading.style.display = show ? 'block' : 'none'; }
+
+        // Real connection polling (no simulation)
+        async function pollConnectionStatus() {
+            try {
+                if (window.electronAPI && window.electronAPI.getStatus) {
+                    const status = await window.electronAPI.getStatus();
+                    elements.connectionStatus.classList.toggle('connected', !!status.connected);
+                } else {
+                    elements.connectionStatus.classList.remove('connected');
+                }
+            } catch {
+                elements.connectionStatus.classList.remove('connected');
+            }
+        }
+
+        function colorCodeToHex(code) {
+            for (const [hex, val] of Object.entries(colors)) {
+                if (Number(val) === Number(code)) return hex;
+            }
+            return '#FFFFFF';
+        }
+        function showTagPopupFromData(result) {
+            const t = translations[currentLanguage] || translations.en;
+            const matCode = result.material;
+            const colCode = result.color;
+            const manCode = result.manufacturer;
+
+            const materialName = materials[matCode] || `${matCode}`;
+            const colorHex = colorCodeToHex(colCode);
+            const colorName = (t.colors || {})[colorHex] || colorHex;
+            const manufacturerName = manufacturers[manCode] || `${manCode}`;
+
+            document.getElementById('tagInfoContent').innerHTML = `
+                <h3>${t.tagInfoTitle}</h3>
+                <div class="popup-detail">
+                    <span><strong>${t.manufacturer}</strong></span>
+                    <span>${manufacturerName}</span>
+                </div>
+                <div class="popup-detail">
+                    <span><strong>${t.material}</strong></span>
+                    <span>${materialName}</span>
+                </div>
+                <div class="popup-detail">
+                    <span><strong>${t.color}</strong></span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span>${colorName}</span>
+                        <div style="width: 28px; height: 28px; background: ${colorHex}; border: 1px solid #ccc; border-radius: 4px;"></div>
+                    </div>
+                </div>
+            `;
+            elements.tagInfoPopup.style.display = 'block';
+        }
+
+        function setAutoReadUi(active) {
+            const t = translations[currentLanguage] || translations.en;
+            elements.autoReadLabel.textContent = t.auto_detect || 'Auto-Erkennung';
+            elements.autoReadBtn.classList.toggle('active', !!active);
+            elements.autoReadDot.textContent = active ? '⏺️' : '⭕';
+        }
+
+        function initTabs() {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const targetTab = tab.dataset.tab;
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.getElementById(targetTab + 'Tab').classList.add('active');
+                });
+            });
+        }
+
+        // Parse official cfg (materials + vendors; ignore colors)
+        function parseOfficialCfgText(text) {
+            const materialsMap = {};
+            const vendorsMap = {};
+            let section = '';
+            let filaNum = null;
+            const lines = text.split(/\r?\n/);
+            for (let raw of lines) {
+                const line = raw.trim();
+                if (!line || line.startsWith('#') || line.startsWith(';')) continue;
+                if (line.startsWith('[') && line.endsWith(']')) {
+                    const secName = line.slice(1, -1).trim().toLowerCase();
+                    section = secName;
+                    filaNum = null;
+                    const filaMatch = secName.match(/^fila(\d{1,3})$/);
+                    if (filaMatch) filaNum = filaMatch[1];
+                    continue;
+                }
+                const eq = line.indexOf('=');
+                if (eq === -1) continue;
+                const key = line.slice(0, eq).trim().toLowerCase();
+                const val = line.slice(eq + 1).trim();
+                if (filaNum && section.startsWith('fila')) {
+                    if (key === 'filament' && val) {
+                        materialsMap[String(parseInt(filaNum, 10))] = val;
+                    }
+                } else if (section === 'vendor_list' || section === 'vendor list') {
+                    if (val) {
+                        const code = String(parseInt(key, 10));
+                        if (!isNaN(Number(code))) vendorsMap[code] = val;
+                    }
+                }
+            }
+            if (Object.keys(materialsMap).length === 0 || Object.keys(vendorsMap).length === 0) {
+                throw new Error('invalid');
+            }
+            return { materialsMap, vendorsMap };
+        }
+
+        async function tryLoadOfficialCfgFromPath(promptOnFail = false) {
+            const t = translations[currentLanguage] || translations.en;
+
+            // If the stored path is ephemeral (only a file name) or not a full path, we cannot reload by path
+            if (officialCfgIsEphemeral || !isLikelyFullPath(officialCfgPath)) {
+                parsedMaterials = null;
+                parsedManufacturers = null;
+                applyDataSource();
+                if (promptOnFail) {
+                    showStatus(t.officialCfgPleaseChoose, 'info');
+                    await chooseOfficialCfgFile();
+                } else {
+                    showStatus(t.officialCfgNotFound, 'error');
+                }
+                return;
+            }
+
+            // Optional existence check (faster error)
+            try {
+                if (window.electronAPI && window.electronAPI.exists) {
+                    const ok = await window.electronAPI.exists(officialCfgPath);
+                    if (!ok) {
+                        throw new Error('notfound');
+                    }
+                }
+            } catch {
+                parsedMaterials = null;
+                parsedManufacturers = null;
+                applyDataSource();
+                showStatus(t.officialCfgNotFound, 'error');
+                if (promptOnFail) {
+                    showStatus(t.officialCfgPleaseChoose, 'info');
+                    await chooseOfficialCfgFile();
+                }
+                return;
+            }
+
+            try {
+                if (window.electronAPI && window.electronAPI.readFile) {
+                    const content = await window.electronAPI.readFile(officialCfgPath, 'utf8');
+                    const { materialsMap, vendorsMap } = parseOfficialCfgText(content);
+                    parsedMaterials = materialsMap;
+                    parsedManufacturers = vendorsMap;
+                    applyDataSource(true);
+                    return;
+                }
+            } catch {
+                // continue to failure handling
+            }
+
+            // Not found or cannot access by path
+            parsedMaterials = null;
+            parsedManufacturers = null;
+            applyDataSource();
+            showStatus(t.officialCfgNotFound, 'error');
+            if (promptOnFail) {
+                showStatus(t.officialCfgPleaseChoose, 'info');
+                await chooseOfficialCfgFile();
+            }
+        }
+
+        async function handleOfficialCfgFileChosen(file) {
+            const t = translations[currentLanguage] || translations.en;
+            try {
+                const text = await file.text();
+                const { materialsMap, vendorsMap } = parseOfficialCfgText(text);
+                parsedMaterials = materialsMap;
+                parsedManufacturers = vendorsMap;
+
+                // Determine if we have a full path (Electron file dialog) or only a name (HTML file input)
+                if (file.path && isLikelyFullPath(file.path)) {
+                    officialCfgPath = file.path;
+                    officialCfgIsEphemeral = false;
+                } else {
+                    officialCfgPath = file.name || '';
+                    officialCfgIsEphemeral = true;
+                    showStatus(t.officialCfgEphemeral, 'info');
+                }
+
+                setOfficialPathDisplay();
+                saveSettings();
+                applyDataSource(true);
+            } catch {
+                parsedMaterials = null;
+                parsedManufacturers = null;
+                applyDataSource();
+                showStatus(t.officialCfgInvalid, 'error');
+            }
+        }
+
+        async function chooseOfficialCfgFile() {
+            const t = translations[currentLanguage] || translations.en;
+            // Prefer Electron open dialog if available
+            try {
+                if (window.electronAPI && window.electronAPI.openFileDialog) {
+                    const res = await window.electronAPI.openFileDialog({ filters: [], properties: ['openFile'] });
+                    if (res && !res.canceled && res.filePaths && res.filePaths[0]) {
+                        const path = res.filePaths[0];
+                        if (window.electronAPI.readFile) {
+                            const content = await window.electronAPI.readFile(path, 'utf8');
+                            const { materialsMap, vendorsMap } = parseOfficialCfgText(content);
+                            parsedMaterials = materialsMap;
+                            parsedManufacturers = vendorsMap;
+                            officialCfgPath = path; // store full path
+                            officialCfgIsEphemeral = false;
+                            setOfficialPathDisplay();
+                            saveSettings();
+                            applyDataSource(true);
+                            return;
+                        }
+                    } else {
+                        return; // canceled by user
+                    }
+                }
+            } catch {
+                // fall back to HTML file input
+            }
+            // Fallback: regular file input (path will not be available in browsers for security)
+            elements.officialCfgFileInput.click();
+        }
+
+        function initEventListeners() {
+            elements.materialSelect.addEventListener('change', (e) => { selectedMaterial = e.target.value; });
+            elements.manufacturerSelect.addEventListener('change', (e) => { selectedManufacturer = e.target.value; });
+
+            elements.setupBtn.addEventListener('click', () => {
+                elements.setupModal.style.display = 'block';
+                elements.languageSelect.value = currentLanguage;
+                elements.manufacturerCheck.checked = useManufacturer;
+
+                elements.officialCfgCheck.checked = useOfficialCfg;
+                setOfficialPathDisplay();
+                toggleOfficialCfgControls();
+
+                updateMaterialsList();
+                updateManufacturersList();
+                toggleManufacturerSection();
+            });
+            elements.closeModal.addEventListener('click', () => {
+                elements.setupModal.style.display = 'none';
+                elements.materialForm.style.display = 'none';
+                elements.manufacturerForm.style.display = 'none';
+            });
+            window.addEventListener('click', (event) => {
+                if (event.target === elements.setupModal) {
+                    elements.setupModal.style.display = 'none';
+                    elements.materialForm.style.display = 'none';
+                    elements.manufacturerForm.style.display = 'none';
+                }
+                if (event.target === elements.tagInfoPopup) elements.tagInfoPopup.style.display = 'none';
+                if (event.target === elements.warningModal) elements.warningModal.style.display = 'none';
+            });
+
+            elements.languageSelect.addEventListener('change', (e) => {
+                currentLanguage = e.target.value;
+                updateTexts();
+                setAutoReadUi(autoReadActive);
+                saveSettings();
+            });
+
+            elements.manufacturerCheck.addEventListener('change', (e) => {
+                const t = translations[currentLanguage] || translations.en;
+                if (e.target.checked) {
+                    showWarningModal(t.warningTitle, t.manufacturerConfirm,
+                        () => { useManufacturer = true; toggleManufacturerSection(); saveSettings(); },
+                        () => { e.target.checked = false; }
+                    );
+                } else {
+                    useManufacturer = false;
+                    toggleManufacturerSection();
+                    saveSettings();
+                }
+            });
+
+            // Official cfg checkbox behavior
+            elements.officialCfgCheck.addEventListener('change', async (e) => {
+                useOfficialCfg = e.target.checked;
+                toggleOfficialCfgControls();
+                saveSettings();
+                if (useOfficialCfg) {
+                    // Validate and (re)load on enable; if not accessible, prompt user to choose file
+                    await tryLoadOfficialCfgFromPath(true);
+                } else {
+                    applyDataSource();
+                }
+            });
+
+            // Choose / reload buttons
+            elements.chooseCfgBtn.addEventListener('click', async () => {
+                await chooseOfficialCfgFile();
+            });
+            elements.reloadCfgBtn.addEventListener('click', async () => {
+                // On manual reload, try path and prompt on failure
+                await tryLoadOfficialCfgFromPath(true);
+            });
+            elements.officialCfgFileInput.addEventListener('change', async (e) => {
+                const files = e.target.files;
+                if (files && files[0]) {
+                    await handleOfficialCfgFileChosen(files[0]);
+                    e.target.value = '';
+                }
+            });
+
+            elements.addMaterialBtn.addEventListener('click', () => {
+                editingMaterialId = null;
+                elements.materialNameInput.value = '';
+                elements.standardMaterialWarning.style.display = 'none';
+                elements.materialEditForm.style.display = 'block';
+                elements.materialForm.style.display = 'block';
+                updateMaterialCodeOptions();
+                elements.materialCodeSelect.value = '';
+            });
+            elements.saveMaterialBtn.addEventListener('click', () => {
+                const name = elements.materialNameInput.value.trim();
+                const code = elements.materialCodeSelect.value;
+                if (!name || !code) { alert('Bitte geben Sie einen gültigen Namen und Code ein!'); return; }
+                if (editingMaterialId && editingMaterialId !== code) delete userMaterials[editingMaterialId];
+                userMaterials[code] = name;
+                saveSettings();
+                applyDataSource();
+                elements.materialForm.style.display = 'none';
+            });
+            elements.cancelMaterialBtn.addEventListener('click', () => { elements.materialForm.style.display = 'none'; });
+            elements.resetMaterialsBtn.addEventListener('click', resetMaterials);
+
+            elements.addManufacturerBtn.addEventListener('click', () => {
+                editingManufacturerId = null;
+                elements.manufacturerNameInput.value = '';
+                elements.standardManufacturerWarning.style.display = 'none';
+                elements.manufacturerEditForm.style.display = 'block';
+                elements.manufacturerForm.style.display = 'block';
+                updateManufacturerCodeOptions();
+                elements.manufacturerCodeSelect.value = '';
+            });
+            elements.saveManufacturerBtn.addEventListener('click', () => {
+                const name = elements.manufacturerNameInput.value.trim();
+                const code = elements.manufacturerCodeSelect.value;
+                if (!name || code === '') { alert('Bitte geben Sie einen gültigen Namen und Code ein!'); return; }
+                if (editingManufacturerId !== null && editingManufacturerId !== code) delete userManufacturers[editingManufacturerId];
+                userManufacturers[code] = name;
+                saveSettings();
+                applyDataSource();
+                elements.manufacturerForm.style.display = 'none';
+            });
+            elements.cancelManufacturerBtn.addEventListener('click', () => { elements.manufacturerForm.style.display = 'none'; });
+            elements.resetManufacturersBtn.addEventListener('click', resetManufacturers);
+
+            // Write: real NFC operation only
+            elements.writeBtn.addEventListener('click', async () => {
+                const t = translations[currentLanguage] || translations.en;
+                if (useManufacturer && !selectedManufacturer) { showStatus(t.selectManufacturerError, 'error'); return; }
+                if (!selectedMaterial) { showStatus(t.selectMaterialError, 'error'); return; }
+                if (!selectedColor) { showStatus(t.selectColorError, 'error'); return; }
+
+                showLoading(true);
+                try {
+                    if (!window.electronAPI || !window.electronAPI.writeTag) throw new Error(t.connectionError);
+                    const res = await window.electronAPI.writeTag({
+                        materialCode: parseInt(selectedMaterial, 10),
+                        colorCode: parseInt(colors[selectedColor], 10),
+                        manufacturerCode: useManufacturer ? parseInt(selectedManufacturer || 1, 10) : 1
+                    });
+                    if (!res || !res.success) throw new Error(res && res.message ? res.message : 'Unknown write error');
+                    showStatus(t.writeSuccess, 'success');
+                } catch (error) {
+                    showStatus(`${t.writeError} ${error.message || error}`, 'error');
+                } finally {
+                    showLoading(false);
+                }
+            });
+
+            // Read: real NFC operation only
+            elements.readBtn.addEventListener('click', async () => {
+                const t = translations[currentLanguage] || translations.en;
+                showLoading(true);
+                try {
+                    if (!window.electronAPI || !window.electronAPI.readTag) throw new Error(t.connectionError);
+                    const res = await window.electronAPI.readTag();
+                    if (!res || !res.success) throw new Error(res && res.message ? res.message : 'Unknown read error');
+                    showTagPopupFromData(res.data);
+                } catch (error) {
+                    showStatus(`${t.readError} ${error.message || error}`, 'error');
+                } finally {
+                    showLoading(false);
+                }
+            });
+
+            // Auto-read toggle
+            elements.autoReadBtn.addEventListener('click', async () => {
+                autoReadActive = !autoReadActive;
+                setAutoReadUi(autoReadActive);
+                try {
+                    if (window.electronAPI && window.electronAPI.setAutoRead) {
+                        await window.electronAPI.setAutoRead(autoReadActive);
+                    }
+                } catch {}
+                if (!autoReadActive) elements.connectionStatus.classList.remove('connected');
+            });
+
+            // Backend auto-status (optional)
+            if (window.electronAPI && window.electronAPI.onAutoStatus) {
+                window.electronAPI.onAutoStatus(({ present, tagData, error }) => {
+                    if (present && tagData) {
+                        const serialized = JSON.stringify(tagData);
+                        if (serialized !== lastAutoDataSerialized) {
+                            showTagPopupFromData(tagData);
+                            lastAutoDataSerialized = serialized;
+                        }
+                    } else {
+                        if (autoReadActive) closeTagInfoPopup();
+                        lastAutoDataSerialized = null;
+                    }
+                    if (error) console.warn('Auto-Read error:', error);
+                });
+            }
+
+            // Reset app preferences button handler
+            if (elements.clearPrefsBtn) {
+                elements.clearPrefsBtn.addEventListener('click', () => {
+                    const t = translations[currentLanguage] || translations.en;
+                    showWarningModal(t.clearPrefsTitle, t.clearPrefsMessage, async () => {
+                        if (autoReadActive) {
+                            autoReadActive = false;
+                            setAutoReadUi(false);
+                            try {
+                                if (window.electronAPI && window.electronAPI.setAutoRead) {
+                                    await window.electronAPI.setAutoRead(false);
+                                }
+                            } catch {}
+                        }
+
+                        // Reset preferences:
+                        // - Language: use OS language like first run (fallback EN)
+                        // - Keep internal materials/manufacturers/colors untouched
+                        // - Keep official cfg preference/path as stored
+                        currentLanguage = detectSystemLanguage();
+                        useManufacturer = false;
+
+                        elements.languageSelect.value = currentLanguage;
+                        elements.manufacturerCheck.checked = false;
+                        toggleManufacturerSection();
+
+                        saveSettings();
+
+                        updateTexts();
+                        showStatus((translations[currentLanguage] || translations.en).clearPrefsSuccess, 'success');
+                    });
+                });
+            }
+        }
+
+        window.editMaterial = editMaterial;
+        window.deleteMaterial = deleteMaterial;
+        window.editManufacturer = editManufacturer;
+        window.deleteManufacturer = deleteManufacturer;
+
+        function init() {
+            loadSettings();
+            updateTexts();
+            initColorGrid();
+            updateMaterialSelect();
+            updateManufacturerSelect();
+            toggleManufacturerSection();
+            toggleOfficialCfgControls();
+            initTabs();
+            initEventListeners();
+            setAutoReadUi(false);
+
+            // If official cfg is enabled, validate and load on startup; prompt if not accessible
+            if (useOfficialCfg) {
+                tryLoadOfficialCfgFromPath(true);
+            }
+
+            pollConnectionStatus();
+            setInterval(pollConnectionStatus, 2000);
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

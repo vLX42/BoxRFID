@@ -1,0 +1,20 @@
+# Normalize line endings (LF im Repo)
+* text=auto eol=lf
+
+# Windows-Skripte mit CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binärdateien (keine EOL-Konvertierung)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.icns binary
+*.zip binary
+*.exe binary
+*.dll binary
+*.asar binary
+*.pdf binary
