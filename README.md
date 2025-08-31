@@ -15,6 +15,10 @@ BoxRFID is a Windows desktop app (Electron) to read and write NFC/RFID tags used
 - Support edit / delete filaments from Filament list and Vendor list
 - Uses PC/SC (nfc-pcsc) for reader support (tested with ACR122U)
 
+## REQUIREMENTS
+- ACR122U USB reader/writer (i.e. https://www.amazon.com/ACR122U-Contactless-Reader-Lianshi-Writer/dp/B07DK9GX1N)
+- Mifare classic 1K tags (i.e. https://www.amazon.com/BABIQT-Sticker-Classic-Self-Adhesive-Stickers/dp/B0BZRS35CT)
+
 
 ## SCREENSHOTS
 - Main Menu
