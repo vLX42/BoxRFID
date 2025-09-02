@@ -19,6 +19,17 @@ BoxRFID is a Windows desktop app (Electron) to read and write NFC/RFID tags used
 - ACR122U USB reader/writer (i.e. https://www.amazon.com/ACR122U-Contactless-Reader-Lianshi-Writer/dp/B07DK9GX1N)
 - Mifare classic 1K tags (i.e. https://www.amazon.com/BABIQT-Sticker-Classic-Self-Adhesive-Stickers/dp/B0BZRS35CT)
 
+## 🚀 WINDOWS BINARIES – DOWNLOAD & START!
+
+> **IMPORTANT:**  
+> You do **not** need to compile the code yourself!  
+> Simply download the latest Windows EXE directly from the release page:
+>
+> 👉 **[BoxRFID v1.0.0 – Download Windows EXE](https://github.com/TinkerBarn/BoxRFID/releases/tag/v1.0.0)**
+>
+> This allows you to get started right away, without setting up a development environment.
+
+
 
 ## SCREENSHOTS
 - Main Menu
