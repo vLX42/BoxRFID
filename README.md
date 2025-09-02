@@ -68,46 +68,117 @@ BoxRFID is a Windows desktop app (Electron) to read and write NFC/RFID tags used
 
 
 
-## Windows development setup (PowerShell)
+## Windows Development Setup (PowerShell)
 
-Prerequisites:
-- Windows 10/11, PowerShell
+This guide will walk you through setting up a complete development environment for BoxRFID on Windows, and building your own EXE from the code.  
+It is designed for users with little or no prior experience in Node.js or Electron development.
 
-Install tools:
+---
+
+### **Prerequisites**
+
+- **Operating System:** Windows 10 or 11  
+- **Terminal:** PowerShell (default on Windows)
+- **Admin Rights:** You may need administrator rights to install software
+
+---
+
+### **Step 1: Install Necessary Tools**
+
+Open PowerShell as an administrator and run the following commands one by one.  
+This will install Git (for downloading code) and Node.js LTS (needed to build and run Electron apps):
+
 ```powershell
 winget install -e --id Git.Git
 winget install -e --id OpenJS.NodeJS.LTS
 ```
 
-Clone and install:
+If you get errors, make sure [winget](https://learn.microsoft.com/en-us/windows/package-manager/winget/) is available, or install the tools manually from their websites.
+
+---
+
+### **Step 2: Download the BoxRFID Code**
+
+Clone (download) the source code from GitHub:
+
 ```powershell
 git clone https://github.com/TinkerBarn/BoxRFID.git
 cd BoxRFID
+```
+
+---
+
+### **Step 3: Install Project Dependencies**
+
+Install the required packages using npm (Node Package Manager):
+
+```powershell
 npm install
 ```
 
-Generate app icons (optional if already present):
+---
+
+### **Step 4: (Optional) Generate Application Icons**
+
+If you want to customize or regenerate the app icon, place a square PNG (ideally 1024x1024) at `assets\source-icon.png`, then run:
+
 ```powershell
-# Place a square PNG (ideally 1024x1024) at: assets\source-icon.png
 npm i -D sharp png-to-ico
 node tools/generate-icons-from-png.js
 ```
 
-Run in development:
+If you don't need to change the icon, you can skip this step.
+
+---
+
+### **Step 5: Run the App in Development Mode**
+
+You can test and develop the app before building the EXE:
+
 ```powershell
 $env:NODE_ENV="development"
 npm run dev
 ```
 
-Build for Windows:
+This will start the app in development mode. If you see errors about missing dependencies, double-check you ran `npm install`.
+
+---
+
+### **Step 6: Build the Windows Executable (EXE)**
+
+To compile the app and create the Windows installer and portable EXE, run:
+
 ```powershell
 npm run build-win
-# Outputs in dist\
-# - BoxRFID – Filament Tag Manager Setup 1.0.0.exe (installer)
-# - BoxRFID – Filament Tag Manager 1.0.0.exe (portable, no setup)
 ```
 
-Notes:
+After building, you will find the following files in the `dist\` folder:
+
+- `BoxRFID – Filament Tag Manager Setup 1.0.0.exe` (Windows installer)
+- `BoxRFID – Filament Tag Manager 1.0.0.exe` (portable, runs without installation)
+
+---
+
+### **Notes & Troubleshooting**
+
+- The EXE/installer icon is set in `assets/icon.ico`. If you change the icon, rebuild the EXE.
+- If you have issues with permissions, try running PowerShell as Administrator.
+- Some antivirus programs may flag newly built EXE files. This is a common false positive for Electron apps you build yourself.
+- If you want to update the code, run `git pull` in the `BoxRFID` folder, then repeat the build steps.
+
+---
+
+### **Further Reading**
+
+- [Electron Documentation](https://www.electronjs.org/docs)
+- [Node.js Documentation](https://nodejs.org/en/docs/)
+- [npm Documentation](https://docs.npmjs.com/)
+
+---
+
+
+
+## Notes
 - EXE/installer icon comes from electron-builder `build.win.icon` → `assets/icon.ico`
 - Window/taskbar icon set in `main.js`:
   ```js
