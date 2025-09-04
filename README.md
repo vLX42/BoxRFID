@@ -30,6 +30,13 @@ BoxRFID is a Windows desktop app (Electron) to read and write NFC/RFID tags used
 > This allows you to get started right away, without setting up a development environment.
 
 
+## HOW TO USE DIY RFID FILAMENT SPOOLS WITH THE QIDI BOX
+
+- Curious how it works in practice?  
+  Check out this short YouTube video and see how effortlessly you can switch filament spools using DIY RFID tags with your QIDI Box:
+
+[![Watch the video](https://img.youtube.com/vi/LO6eAkdcSCA/hqdefault.jpg)](https://youtu.be/LO6eAkdcSCA)
+
 
 ## SCREENSHOTS
 - Main Menu
