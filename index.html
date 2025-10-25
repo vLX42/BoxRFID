@@ -320,6 +320,7 @@
 <body>
     <div class="container">
         <div class="connection-status" id="connectionStatus"></div>
+        <a href="https://github.com/TinkerBarn/BoxRFID#macos-nfc-reader-setup--troubleshooting" target="_blank" id="readerHelpLink" style="position:absolute; top:28px; right:12px; font-size:11px; text-decoration:none; color:#dc3545; display:none;">Reader help</a>
 
         <div class="header">
             <h1 id="appTitle">BoxRFID – Filament Tag Manager</h1>
@@ -1597,11 +1598,19 @@
                 if (window.electronAPI && window.electronAPI.getStatus) {
                     const status = await window.electronAPI.getStatus();
                     elements.connectionStatus.classList.toggle('connected', !!status.connected);
+                    const helpLink = document.getElementById('readerHelpLink');
+                    if (helpLink) {
+                        helpLink.style.display = status.connected ? 'none' : 'inline';
+                    }
                 } else {
                     elements.connectionStatus.classList.remove('connected');
+                    const helpLink = document.getElementById('readerHelpLink');
+                    if (helpLink) helpLink.style.display = 'inline';
                 }
             } catch {
                 elements.connectionStatus.classList.remove('connected');
+                const helpLink = document.getElementById('readerHelpLink');
+                if (helpLink) helpLink.style.display = 'inline';
             }
         }
 

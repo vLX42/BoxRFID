@@ -9,8 +9,10 @@
     "build": "electron-builder",
     "build-win": "electron-builder --win",
     "build-linux": "electron-builder --linux",
-    "build-all": "electron-builder --win --linux",
-    "dist": "npm run build"
+    "build-mac": "electron-builder --mac",
+    "build-all": "electron-builder --win --linux --mac",
+    "dist": "npm run build",
+    "postinstall": "electron-builder install-app-deps"
   },
   "build": {
     "appId": "com.tinkerbarn.BoxRFID",
@@ -19,9 +21,21 @@
       "output": "dist"
     },
     "files": [
-      "**/*"
+      "index.html",
+      "main.js",
+      "preload.js",
+      "nfc-service.js",
+      "assets/**/*",
+      "screenshots/**/*",
+      "tools/**/*",
+      "package.json",
+      "node_modules/**/*"
     ],
     "asar": true,
+    "asarUnpack": [
+      "node_modules/@pokusew/pcsclite/**/*",
+      "node_modules/nfc-pcsc/**/*"
+    ],
     "win": {
       "target": [
         {
@@ -59,6 +73,21 @@
       "icon": "assets/icon.png",
       "category": "Utility"
     },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "assets/AppIcon.icns",
+      "category": "public.app-category.utilities",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
+    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
@@ -85,6 +114,7 @@
   "author": "Tinkerbarn",
   "license": "CC-BY-NC-SA-4.0",
   "devDependencies": {
+    "@electron/rebuild": "^4.0.1",
     "electron": "^37.3.1",
     "electron-builder": "latest",
     "png-to-ico": "^3.0.1",

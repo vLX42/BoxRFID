@@ -1,0 +1,114 @@
+name: Build macOS App
+
+on:
+  push:
+    branches: [ main, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Install system dependencies
+      run: |
+        # Install Python for native module compilation
+        brew install python
+        # Install pkg-config and pcsc-lite for NFC support
+        brew install pkg-config pcsc-lite
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Generate icons
+      run: |
+        npm install -D sharp png-to-ico
+        node tools/generate-icons-from-png.js
+        
+    - name: Build macOS app (${{ matrix.arch }})
+      run: npx electron-builder --mac --${{ matrix.arch }}
+      env:
+        CSC_IDENTITY_AUTO_DISCOVERY: false
+        # Set Python path for node-gyp
+        PYTHON: /opt/homebrew/bin/python3
+        
+    - name: List build artifacts
+      run: ls -la dist/
+      
+    - name: Upload macOS DMG (${{ matrix.arch }})
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-dmg-${{ matrix.arch }}
+        path: dist/*.dmg
+        retention-days: 30
+        
+    - name: Upload to release (if tag)
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/*.dmg
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-universal:
+    runs-on: macos-latest
+    needs: build-macos
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Install system dependencies
+      run: |
+        brew install python pkg-config pcsc-lite
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Generate icons
+      run: |
+        npm install -D sharp png-to-ico
+        node tools/generate-icons-from-png.js
+        
+    - name: Build Universal macOS app
+      run: npx electron-builder --mac --universal
+      env:
+        CSC_IDENTITY_AUTO_DISCOVERY: false
+        PYTHON: /opt/homebrew/bin/python3
+        
+    - name: Upload Universal macOS DMG
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-dmg-universal
+        path: dist/*.dmg
+        retention-days: 30
+        
+    - name: Upload to release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/*.dmg
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

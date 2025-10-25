@@ -1,11 +1,12 @@
-/* Generate Windows .ico and PNG app icon from assets/source-icon.png
+/* Generate Windows .ico, PNG app icon, and macOS .icns from assets/source-icon.png
    Usage:
      1) npm i -D sharp png-to-ico
      2) Place your PNG at assets/source-icon.png
      3) node tools/generate-icons-from-png.js
    Output:
-     - assets/icon.ico   (used by electron-builder for EXE/Installer)
-     - assets/icon.png   (256x256, used by BrowserWindow icon)
+     - assets/icon.ico     (used by electron-builder for EXE/Installer)
+     - assets/icon.png     (256x256, used by BrowserWindow icon)
+     - assets/AppIcon.icns (used by electron-builder for macOS App)
 
    Change note:
    - Generates icons WITHOUT any border (randlos), with a rounded white background by default.
@@ -39,6 +40,7 @@ const BG_GRAD_BOTTOM = '#1b5e8a';        // used when BG_STYLE === 'gradient'
 const BG_RADIUS = 180;                   // corner radius (for 1024 canvas), scales for other sizes
 const CONTENT_SCALE = 0.76;              // how large your PNG appears inside the square (0..1)
 const ICO_SIZES = [16, 24, 32, 48, 64, 128, 256]; // sizes included into .ico
+const ICNS_SIZES = [16, 32, 64, 128, 256, 512, 1024]; // sizes for macOS .icns
 const MASTER_SIZE = 1024;                // master canvas size
 const APP_PNG_SIZE = 256;                // icon.png size
 
@@ -120,6 +122,53 @@ async function renderBase(size) {
   return composeOnBackground(size);
 }
 
+// Simple ICNS generation function
+function createIcnsFile(pngFiles, outputPath) {
+  const fs = require('fs');
+  
+  // ICNS header
+  const header = Buffer.alloc(8);
+  header.write('icns', 0, 'ascii');
+  
+  let totalSize = 8; // header size
+  const chunks = [];
+  
+  // Map sizes to ICNS type codes
+  const sizeToType = {
+    16: 'icp4',
+    32: 'icp5', 
+    64: 'icp6',
+    128: 'ic07',
+    256: 'ic08',
+    512: 'ic09',
+    1024: 'ic10'
+  };
+  
+  for (const size of ICNS_SIZES) {
+    const typeCode = sizeToType[size];
+    if (!typeCode) continue;
+    
+    const pngPath = path.join(TMP_DIR, `icns-${size}.png`);
+    if (!fs.existsSync(pngPath)) continue;
+    
+    const pngData = fs.readFileSync(pngPath);
+    const chunkHeader = Buffer.alloc(8);
+    chunkHeader.write(typeCode, 0, 'ascii');
+    chunkHeader.writeUInt32BE(pngData.length + 8, 4);
+    
+    chunks.push(chunkHeader);
+    chunks.push(pngData);
+    totalSize += pngData.length + 8;
+  }
+  
+  // Write total size to header
+  header.writeUInt32BE(totalSize, 4);
+  
+  // Combine all chunks
+  const icnsData = Buffer.concat([header, ...chunks]);
+  fs.writeFileSync(outputPath, icnsData);
+}
+
 (async () => {
   try {
     if (!fs.existsSync(SRC)) {
@@ -157,9 +206,24 @@ async function renderBase(size) {
       .toBuffer();
     fs.writeFileSync(appPngOut, appBuf);
 
+    // 5) Create ICNS files for macOS
+    for (const s of ICNS_SIZES) {
+      const p = path.join(TMP_DIR, `icns-${s}.png`);
+      const buf = await sharp(masterPng)
+        .resize(s, s, { fit: 'cover' })
+        .png({ compressionLevel: 9 })
+        .toBuffer();
+      fs.writeFileSync(p, buf);
+    }
+
+    // 6) Create ICNS
+    const icnsOut = path.join(OUT_DIR, 'AppIcon.icns');
+    createIcnsFile(ICNS_SIZES.map(s => path.join(TMP_DIR, `icns-${s}.png`)), icnsOut);
+
     console.log('Icons generated (borderless background):');
     console.log(' -', icoOut);
     console.log(' -', appPngOut);
+    console.log(' -', icnsOut);
     console.log('Temporary PNGs are in', TMP_DIR);
     if (BG_STYLE === 'white') {
       console.log('Background: rounded white square (no border).');
