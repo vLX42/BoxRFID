@@ -62,7 +62,8 @@ jobs:
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v2
       with:
-        files: dist/*.dmg
+        files: |
+          dist/BoxRFID – Filament Tag Manager-1.0.0${{ matrix.arch == 'arm64' && '-arm64' || '' }}.dmg
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
