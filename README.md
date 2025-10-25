@@ -304,6 +304,7 @@ After building, you will find the following files in the `dist/` folder:
 - If you get errors about missing PC/SC Lite during build, make sure you installed the system dependencies: `brew install pkg-config pcsc-lite`
 - If native module compilation fails, you may need to install Xcode Command Line Tools: `xcode-select --install`
 - If you want to update the code, run `git pull` in the `BoxRFID` folder, then repeat the build steps.
+- **GitHub Actions Note**: If you see `⨯ GitHub Personal Access Token is not set` during local builds, this is expected and can be ignored. It only affects automatic release uploads in CI/CD workflows.
 
 ---
 
