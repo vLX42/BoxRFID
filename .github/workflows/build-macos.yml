@@ -3,9 +3,10 @@ name: Build macOS App
 on:
   push:
     branches: [ main, develop ]
-    tags: [ 'v*' ]
   pull_request:
     branches: [ main ]
+  release:
+    types: [created, published]
   workflow_dispatch:
 
 jobs:
@@ -42,10 +43,9 @@ jobs:
         node tools/generate-icons-from-png.js
         
     - name: Build macOS app (${{ matrix.arch }})
-      run: npx electron-builder --mac --${{ matrix.arch }}
+      run: npx electron-builder --mac --${{ matrix.arch }} --publish never
       env:
         CSC_IDENTITY_AUTO_DISCOVERY: false
-        # Set Python path for node-gyp
         PYTHON: /opt/homebrew/bin/python3
         
     - name: List build artifacts
@@ -58,13 +58,11 @@ jobs:
         path: dist/*.dmg
         retention-days: 30
         
-    - name: Upload to release (if tag)
-      if: startsWith(github.ref, 'refs/tags/')
+    - name: Upload DMG to Release
+      if: github.event_name == 'release'
       uses: softprops/action-gh-release@v2
       with:
         files: dist/*.dmg
-        draft: false
-        prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

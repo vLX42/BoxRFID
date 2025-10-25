@@ -304,7 +304,7 @@ After building, you will find the following files in the `dist/` folder:
 - If you get errors about missing PC/SC Lite during build, make sure you installed the system dependencies: `brew install pkg-config pcsc-lite`
 - If native module compilation fails, you may need to install Xcode Command Line Tools: `xcode-select --install`
 - If you want to update the code, run `git pull` in the `BoxRFID` folder, then repeat the build steps.
-- **GitHub Actions Note**: If you see `⨯ GitHub Personal Access Token is not set` during local builds, this is expected and can be ignored. It only affects automatic release uploads in CI/CD workflows.
+- **Note**: The `--publish never` flag in the build script prevents electron-builder from trying to publish to GitHub releases, which avoids the GH_TOKEN error during local builds.
 
 ---
 
@@ -313,6 +313,42 @@ After building, you will find the following files in the `dist/` folder:
 - [Electron Documentation](https://www.electronjs.org/docs)
 - [Node.js Documentation](https://nodejs.org/en/docs/)
 - [npm Documentation](https://docs.npmjs.com/)
+
+---
+
+## Creating Releases (GitHub)
+
+The repository includes automated GitHub Actions workflows that build DMG files for macOS when you create a new release.
+
+### **How to Create a Release**
+
+1. **Push your changes** to the `main` branch
+2. **Go to your GitHub repository** in a web browser
+3. **Click "Releases"** in the right sidebar (or go to `https://github.com/vLX42/BoxRFID/releases`)
+4. **Click "Draft a new release"**
+5. **Create a tag** (e.g., `v1.0.1`, `v1.1.0`) - must start with `v`
+6. **Fill in release details**:
+   - Release title (e.g., "Version 1.0.1")
+   - Description (what's new, bug fixes, etc.)
+7. **Click "Publish release"**
+
+### **What Happens Automatically**
+
+When you publish a release, GitHub Actions will:
+- ✅ Trigger the build workflow
+- ✅ Build DMG files for both **x64** (Intel) and **ARM64** (Apple Silicon)
+- ✅ Automatically attach both DMG files to your release
+- ✅ Make them available for download
+
+You can check the build progress in the **Actions** tab of your repository.
+
+### **Manual Trigger**
+
+You can also trigger builds manually:
+1. Go to the **Actions** tab in your repository
+2. Select **"Build macOS App"**
+3. Click **"Run workflow"**
+4. Choose the branch and click **"Run workflow"**
 
 ---
 
