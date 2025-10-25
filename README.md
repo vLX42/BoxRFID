@@ -317,7 +317,177 @@ After building, you will find the following files in the `dist/` folder:
 
 ## macOS NFC Reader Setup & Troubleshooting
 
-If the app launches but you see the message `Read error: NFC Reader nicht verbunden` (reader not connected), follow these steps to get your ACR122U (or compatible) working on macOS.
+### 🚀 Quick Start: 5-Minute Setup
+
+**What you need:**
+- ACR122U USB NFC reader
+- macOS 12.0 or later
+- 5 minutes
+
+**Setup flowchart:**
+```
+1. Plug in reader → USB port
+2. Verify detection → system_profiler command
+3. Install app → Download DMG or build
+4. Launch app → Right-click "Open" (first time)
+5. Test tag → Place on reader
+✅ Green light = Success!
+```
+
+---
+
+### Quick Start Guide: Getting USB NFC Reader Working on macOS
+
+This step-by-step guide will help you get your ACR122U USB NFC reader working with the BoxRFID app on macOS.
+
+#### Prerequisites
+- ACR122U NFC reader (or compatible PC/SC reader)
+- macOS 12.0 or later
+- USB-A port (or USB-C adapter)
+
+#### Step 1: Physical Connection
+1. **Plug in the reader** directly to a USB port on your Mac
+   - ⚠️ **Important**: Use a direct USB port, not through a hub (initially)
+   - Make sure you're using a **data cable**, not a charge-only cable
+   
+2. **Verify USB detection**:
+   ```bash
+   system_profiler SPUSBDataType | grep -i "acr"
+   ```
+   
+   **Expected output** (something like):
+   ```
+   ACS ACR122U PICC Interface:
+     Product ID: 0x2200
+     Vendor ID: 0x072f (Advanced Card Systems Ltd.)
+   ```
+   
+   ✅ If you see this, your reader is physically detected!  
+   ❌ If nothing appears, try:
+   - Different USB port
+   - Different USB cable
+   - Restart your Mac
+
+#### Step 2: Verify PC/SC Service (Built into macOS)
+
+macOS includes a built-in PC/SC service (no installation needed). To verify it's working:
+
+```bash
+# Check if pcscd is running
+pgrep -fl pcscd
+```
+
+**What you should see**: Either a process number or nothing (it starts on-demand)
+
+**Note**: You do **NOT** need to install anything from Homebrew for basic functionality. macOS handles PC/SC automatically.
+
+#### Step 3: Install the App
+
+Choose one of these methods:
+
+**Option A: Use Pre-built DMG** (Recommended)
+1. Download the DMG from [Releases](https://github.com/vLX42/BoxRFID/releases)
+2. Open the DMG file
+3. Drag the app to `/Applications`
+4. Right-click the app and select "Open" (first time only, to bypass Gatekeeper)
+
+**Option B: Build from Source**
+```bash
+# Clone and build
+git clone https://github.com/vLX42/BoxRFID.git
+cd BoxRFID
+npm install
+npm run build-mac
+
+# Install the built DMG
+open dist/*.dmg
+```
+
+#### Step 4: First Launch
+
+1. **Open the app** (remember to right-click → Open on first launch)
+
+2. **Check for security prompts**:
+   - macOS may show a security warning
+   - Go to **System Settings → Privacy & Security**
+   - Click **"Open Anyway"** if the app is blocked
+
+3. **Look for the connection indicator** in the app:
+   - 🟢 Green = Reader connected
+   - 🔴 Red = Reader not connected
+
+#### Step 5: Test Tag Reading
+
+1. **Place an NFC tag** on the reader (flat on top, centered)
+2. The reader should detect it automatically
+3. Tag UID should appear in the app
+
+#### Troubleshooting: "Read error: NFC Reader nicht verbunden"
+
+If you see this error, the app can't detect your reader. Try these steps in order:
+
+**Quick Fixes:**
+1. **Unplug and replug** the reader (wait 5 seconds)
+2. **Restart the app**
+3. **Try a different USB port**
+
+**If still not working:**
+
+Run the diagnostic script:
+```bash
+cd /path/to/BoxRFID
+./diagnose-reader-macos.sh
+```
+
+This will show:
+- ✅ USB device detection
+- ✅ PC/SC daemon status  
+- ✅ Reader vendor/product IDs
+- ✅ Recent system logs
+
+**Common Issues:**
+
+| Symptom | Solution |
+|---------|----------|
+| Reader not in USB list | Try different cable/port, restart Mac |
+| "Authentication failed" error | This is now fixed in v1.0.0+ with APDU commands |
+| Red light stays on | Normal - ACR122U LED indicates power |
+| Reader works in dev mode but not built app | Rebuild app: `npm run build-mac` |
+
+#### Step 6: Advanced Setup (Only if needed)
+
+Most users won't need this, but if you want additional tools:
+
+```bash
+# Install optional PC/SC tools
+brew install pcsc-tools
+
+# Test reader directly
+pcsc_scan
+# Press Ctrl+C to stop
+```
+
+If `pcsc_scan` shows your reader and detects cards, but the app doesn't work, try:
+```bash
+# Run app in development mode to see console logs
+NODE_ENV=development npm start
+# Check console for error messages
+```
+
+#### Step 7: Verify It's Working
+
+✅ **You're all set if:**
+- Green connection indicator in the app
+- Placing a tag shows the UID
+- You can read/write tags successfully
+
+🎉 **Success!** You can now read and write QIDI filament tags.
+
+---
+
+### Detailed Troubleshooting
+
+If the quick start didn't work, here's more detailed troubleshooting:
 
 ### 1. Hardware Check
 1. Plug the ACR122U directly into a USB port (avoid unpowered hubs initially).
@@ -398,6 +568,27 @@ You can run the helper script to collect basic info:
 ./setup-macos-reader.sh   # (alternative) performs install + quick detection
 ```
 It will print USB enumeration, pcscd status, and attempt a minimal Node detection run.
+
+### 10. ACR122U Authentication on macOS
+
+**Note**: Versions 1.0.0+ include fixes for ACR122U authentication issues on macOS.
+
+The app now uses direct APDU commands to:
+- Pre-load authentication keys into the reader during initialization
+- Authenticate using vendor-specific commands that bypass macOS PC/SC limitations
+- Automatically retry with fallback methods if first authentication fails
+
+If you're using an older version and seeing "Could not load authentication key" errors:
+1. Update to the latest version
+2. Or rebuild from source: `npm run build-mac`
+
+The authentication process now:
+- Loads keys (D3F7... vendor key and FFFF... standard key) into reader memory slots
+- Uses APDU command `0xFF 0x86` for direct authentication
+- Falls back to reloading keys if authentication fails
+- Validates response codes (90 00 = success)
+
+This fix specifically addresses ACR122U readers on macOS where the standard PC/SC `authenticate()` function doesn't work reliably.
 
 ### 10. When It Still Fails
 Gather output from:
