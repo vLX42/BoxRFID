@@ -9,7 +9,7 @@
     "build": "electron-builder",
     "build-win": "electron-builder --win",
     "build-linux": "electron-builder --linux",
-    "build-mac": "electron-builder --mac",
+    "build-mac": "electron-builder --mac --publish never",
     "build-all": "electron-builder --win --linux --mac",
     "dist": "npm run build",
     "postinstall": "electron-builder install-app-deps"
@@ -17,6 +17,7 @@
   "build": {
     "appId": "com.tinkerbarn.BoxRFID",
     "productName": "BoxRFID – Filament Tag Manager",
+    "publish": null,
     "directories": {
       "output": "dist"
     },
