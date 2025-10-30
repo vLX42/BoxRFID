@@ -295,11 +295,16 @@ After building, you will find the following files in the `dist/` folder:
     ```
   - **Method 3 (Helper script):** Run `./install-macos.sh` from the project directory for guided installation
 
-- If you get "App is damaged and can't be opened", run:
+- **If you get "App is damaged and can't be opened"** (common with GitHub releases):
   ```bash
+  # This removes the quarantine flag that macOS adds to downloaded files
   sudo xattr -cr '/Applications/BoxRFID – Filament Tag Manager.app'
+  
+  # If still not working, also run:
   sudo codesign --force --deep --sign - '/Applications/BoxRFID – Filament Tag Manager.app'
   ```
+  
+  **Why this happens:** Apps downloaded from GitHub aren't notarized by Apple. This is normal for open-source builds. Local builds don't have this issue.
 - If you have issues with permissions, you may need to allow the app in System Settings > Privacy & Security.
 - If you get errors about missing PC/SC Lite during build, make sure you installed the system dependencies: `brew install pkg-config pcsc-lite`
 - If native module compilation fails, you may need to install Xcode Command Line Tools: `xcode-select --install`
@@ -319,6 +324,8 @@ After building, you will find the following files in the `dist/` folder:
 ## Creating Releases (GitHub)
 
 The repository includes automated GitHub Actions workflows that build DMG files for macOS when you create a new release.
+
+> **💡 Code Signing**: By default, builds are unsigned (free). To enable code signing and avoid the "damaged app" warning, see [CODE_SIGNING_SETUP.md](CODE_SIGNING_SETUP.md) for instructions. Requires Apple Developer Account ($99/year).
 
 ### **How to Create a Release**
 
@@ -424,9 +431,25 @@ Choose one of these methods:
 
 **Option A: Use Pre-built DMG** (Recommended)
 1. Download the DMG from [Releases](https://github.com/vLX42/BoxRFID/releases)
+   - Choose **ARM64** for Apple Silicon (M1/M2/M3/M4)
+   - Choose **x64** for Intel Macs
 2. Open the DMG file
 3. Drag the app to `/Applications`
-4. Right-click the app and select "Open" (first time only, to bypass Gatekeeper)
+4. **Important:** Remove quarantine attributes (required for GitHub releases):
+   
+   **Easy method** - Download and run the fix script:
+   ```bash
+   curl -O https://raw.githubusercontent.com/vLX42/BoxRFID/main/fix-github-dmg.sh
+   chmod +x fix-github-dmg.sh
+   ./fix-github-dmg.sh
+   ```
+   
+   **Manual method:**
+   ```bash
+   sudo xattr -cr '/Applications/BoxRFID – Filament Tag Manager.app'
+   ```
+   
+5. Right-click the app and select "Open" (first time only, to bypass Gatekeeper)
 
 **Option B: Build from Source**
 ```bash

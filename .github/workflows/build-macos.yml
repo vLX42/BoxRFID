@@ -42,11 +42,34 @@ jobs:
         npm install -D sharp png-to-ico
         node tools/generate-icons-from-png.js
         
+    - name: Import Code Signing Certificate (if available)
+      if: ${{ secrets.MACOS_CERTIFICATE != '' }}
+      env:
+        MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+        MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      run: |
+        echo "🔐 Importing code signing certificate..."
+        echo "$MACOS_CERTIFICATE" | base64 --decode > certificate.p12
+        security create-keychain -p actions temp.keychain
+        security default-keychain -s temp.keychain
+        security unlock-keychain -p actions temp.keychain
+        security import certificate.p12 -k temp.keychain -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k actions temp.keychain
+        rm certificate.p12
+        echo "✅ Certificate imported"
+        
     - name: Build macOS app (${{ matrix.arch }})
       run: npx electron-builder --mac --${{ matrix.arch }} --publish never
       env:
-        CSC_IDENTITY_AUTO_DISCOVERY: false
+        CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.MACOS_CERTIFICATE != '' }}
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         PYTHON: /opt/homebrew/bin/python3
+        
+    - name: Remove quarantine attributes (for GitHub releases)
+      run: |
+        find dist -name "*.dmg" -exec xattr -cr {} \;
         
     - name: List build artifacts
       run: ls -la dist/
@@ -58,12 +81,21 @@ jobs:
         path: dist/*.dmg
         retention-days: 30
         
+    - name: Rename DMG for release
+      if: github.event_name == 'release'
+      run: |
+        if [ "${{ matrix.arch }}" = "arm64" ]; then
+          mv "dist/BoxRFID – Filament Tag Manager-1.0.0-arm64.dmg" "dist/BoxRFID-macOS-${{ matrix.arch }}-${{ github.ref_name }}.dmg" || true
+        else
+          mv "dist/BoxRFID – Filament Tag Manager-1.0.0.dmg" "dist/BoxRFID-macOS-${{ matrix.arch }}-${{ github.ref_name }}.dmg" || true
+        fi
+        ls -lh dist/*.dmg
+        
     - name: Upload DMG to Release
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v2
       with:
-        files: |
-          dist/BoxRFID – Filament Tag Manager-1.0.0${{ matrix.arch == 'arm64' && '-arm64' || '' }}.dmg
+        files: dist/BoxRFID-macOS-${{ matrix.arch }}-${{ github.ref_name }}.dmg
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
